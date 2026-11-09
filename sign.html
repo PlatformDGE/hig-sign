@@ -68,6 +68,14 @@
   .spinner { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--red); border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 16px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   footer { text-align: center; font-size: 11.5px; color: var(--muted); padding: 10px 16px 0; }
+  .parties { list-style: none; margin: 0; padding: 0; }
+  .parties li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .parties li:last-child { border-bottom: 0; }
+  .parties .who b { display: block; } .parties .who span { color: var(--muted); font-size: 13px; }
+  .st { font-size: 12.5px; font-weight: 700; border-radius: 99px; padding: 2px 10px; align-self: center; white-space: nowrap; }
+  .st.ok { background: #e6f4ea; color: #157f3b; } .st.wait { background: rgba(29,53,96,.08); color: var(--muted); }
+  .meta { margin: 0 0 12px; font-size: 14.5px; } .meta div { margin-bottom: 4px; } .meta span { color: var(--muted); }
+  .pages img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; margin: 0 0 10px; background: #fff; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -93,10 +101,12 @@
   </section>
 
   <section id="done" class="card state" hidden>
-    <div class="icon">✅</div>
-    <h2 data-i18n="doneTitle"></h2>
+    <div class="icon" id="doneIcon">✅</div>
+    <h2 id="doneTitle"></h2>
     <p id="doneText"></p>
     <p class="small" id="doneHash"></p>
+    <button class="primary" id="retryBtn" hidden style="margin-top:14px"></button>
+    <div class="err" id="doneErr"></div>
   </section>
 
   <main id="main" hidden>
@@ -107,7 +117,12 @@
     </div>
 
     <div class="card">
-      <div class="tabs" role="tablist">
+      <h3 data-i18n="parties"></h3>
+      <ul class="parties" id="parties"></ul>
+    </div>
+
+    <div class="card">
+      <div class="tabs" role="tablist" id="tabs">
         <button role="tab" data-lang="ka">ქართული</button>
         <button role="tab" data-lang="ru">Русский</button>
       </div>
@@ -130,16 +145,13 @@
     <div class="card">
       <label class="consent">
         <input type="checkbox" id="consent">
-        <span>
-          <b>ქართ.:</b> გავეცანი ხელშეკრულებას და ვეთანხმები მის პირობებს, მათ შორის პირგასამტეხლოს (10 000 აშშ დოლარი ან მიღებული შემოსავლის 100%). ვეთანხმები, რომ ელექტრონული ხელმოწერა თანაბარძალოვანია ხელით შესრულებული ხელმოწერისა.<br><br>
-          <b>Рус.:</b> Я прочитал(а) договор и принимаю его условия, включая штраф (10 000 долларов США или 100% полученного дохода). Согласен(на), что электронная подпись равнозначна собственноручной.
-        </span>
+        <span id="consentText"></span>
       </label>
     </div>
 
     <div class="err" id="err"></div>
     <button class="primary" id="signBtn" disabled data-i18n="signBtn"></button>
-    <p class="small" style="text-align:center;margin-top:10px" data-i18n="afterSign"></p>
+    <p class="small" style="text-align:center;margin-top:10px" id="afterSign"></p>
   </main>
 
   <footer>Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia</footer>
@@ -159,19 +171,35 @@
   var T = {
     checkData: { ka: 'შეამოწმეთ თქვენი მონაცემები', ru: 'Проверьте ваши данные' },
     checkHint: { ka: 'თუ მონაცემები არასწორია, არ მოაწეროთ ხელი — მიმართეთ კომპანიას.', ru: 'Если данные неверны, не подписывайте — напишите в компанию.' },
+    parties: { ka: 'ხელმომწერები', ru: 'Подписанты' },
     sigTitle: { ka: 'ხელმოწერა', ru: 'Подпись' },
     sigHint: { ka: 'მოაწერეთ ხელი თითით', ru: 'Распишитесь пальцем' },
     clear: { ka: 'გასუფთავება', ru: 'Стереть' },
     signBtn: { ka: 'ხელმოწერა / Подписать', ru: 'ხელმოწერა / Подписать' },
-    afterSign: { ka: 'ხელმოწერის შემდეგ PDF მოგივათ Telegram-ში.', ru: 'После подписания PDF придёт вам в Telegram.' },
+    afterSign: { ka: 'როცა ყველა მოაწერს ხელს, PDF მოგივათ Telegram-ში.', ru: 'Когда подпишут все стороны, PDF придёт вам в Telegram.' },
     doneTitle: { ka: 'ხელშეკრულება ხელმოწერილია', ru: 'Договор подписан' },
+    youSigned: { ka: 'თქვენ მოაწერეთ ხელი', ru: 'Вы подписали' },
+    waitTitle: { ka: 'ჯერ არ არის თქვენი რიგი', ru: 'Пока не ваша очередь' },
+    finishing: { ka: 'ყველამ მოაწერა ხელი — ვამზადებთ PDF-ს', ru: 'Все подписали — собираем PDF' },
+    retry: { ka: 'PDF-ის ხელახლა შექმნა / Собрать PDF ещё раз', ru: 'PDF-ის ხელახლა შექმნა / Собрать PDF ещё раз' },
+    signed: { ka: 'ხელმოწერილია', ru: 'подписал(а)' },
+    pending: { ka: 'ელოდება', ru: 'ожидает' },
     name: { ka: 'სახელი, გვარი', ru: 'ФИО' },
+    role: { ka: 'როლი', ru: 'Роль' },
     pid: { ka: 'პირადი ნომერი', ru: 'Личный номер' },
     phone: { ka: 'ტელეფონი', ru: 'Телефон' },
+    address: { ka: 'მისამართი', ru: 'Адрес' },
+    cadastral: { ka: 'საკადასტრო კოდი', ru: 'Кадастровый код' },
     building: { ka: 'PDF-ის მომზადება…', ru: 'Готовим PDF…' },
     signing: { ka: 'ხელმოწერა…', ru: 'Подписываем…' }
   };
+  var CONSENT = {
+    nda: '<b>ქართ.:</b> გავეცანი ხელშეკრულებას და ვეთანხმები მის პირობებს, მათ შორის პირგასამტეხლოს (10 000 აშშ დოლარი ან მიღებული შემოსავლის 100%). ვეთანხმები, რომ ელექტრონული ხელმოწერა თანაბარძალოვანია ხელით შესრულებული ხელმოწერისა.<br><br><b>Рус.:</b> Я прочитал(а) договор и принимаю его условия, включая штраф (10 000 долларов США или 100% полученного дохода). Согласен(на), что электронная подпись равнозначна собственноручной.',
+    company: '<b>ქართ.:</b> ვაწერ ხელს ხელშეკრულებას Homes in Georgia-ს სახელით. ვეთანხმები, რომ ელექტრონული ხელმოწერა თანაბარძალოვანია ხელით შესრულებული ხელმოწერისა.<br><br><b>Рус.:</b> Подписываю договор от имени Homes in Georgia. Согласен(на), что электронная подпись равнозначна собственноручной.',
+    lease: '<b>ქართ.:</b> გავეცანი ქირავნობის ხელშეკრულების ყველა გვერდს და ვეთანხმები მის პირობებს. ვეთანხმები, რომ ელექტრონული ხელმოწერა თანაბარძალოვანია ხელით შესრულებული ხელმოწერისა.<br><br><b>Рус.:</b> Я прочитал(а) все страницы договора аренды и согласен(на) с его условиями. Согласен(на), что электронная подпись равнозначна собственноручной.'
+  };
   function t(k) { return (T[k] || {})[state.lang] || ''; }
+  function both(k) { return T[k].ka + ' / ' + T[k].ru; }
   function applyI18n() {
     document.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n); });
     document.documentElement.lang = state.lang;
@@ -185,9 +213,13 @@
     $('fatalText').textContent = H.errorText(code, 'both') + (detail ? ' (' + detail + ')' : '');
     show('fatal');
   }
-  function showErr(code, detail) {
-    var el = $('err');
-    el.textContent = H.errorText(code, 'both') + (detail ? ' [' + detail + ']' : '');
+  function errText(e, step) {
+    if (e && e.code) return H.errorText(e.code, 'both');
+    return H.errorText('client', 'both') + ' [' + step + ': ' + (e && (e.message || e.name) || String(e)) + ']';
+  }
+  function showErr(text, el) {
+    el = el || $('err');
+    el.textContent = text;
     el.style.display = 'block';
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
@@ -251,41 +283,153 @@
   function updateBtn() { $('signBtn').disabled = !(inkLen > 60 && $('consent').checked) || state.busy; }
   $('consent').onchange = updateBtn;
 
-  /* ───── договор ───── */
-  function renderContract() {
-    $('contract').innerHTML = H.contractHtml(state.data.content, state.lang);
-    document.querySelectorAll('.tabs button').forEach(function (b) {
-      b.setAttribute('aria-selected', String(b.dataset.lang === state.lang));
-    });
-    var e = state.data.envelope;
+  /* ───── экраны ───── */
+  function partiesHtml(list) {
+    return list.map(function (s) {
+      var ok = s.status === 'signed';
+      return '<li><div class="who"><b>' + H.esc(s.name) + '</b><span>' + H.esc(s.roleLabel[state.lang]) +
+        (s.signedAtText ? ' · ' + H.esc(s.signedAtText) : '') + '</span></div>' +
+        '<span class="st ' + (ok ? 'ok' : 'wait') + '">' + (ok ? '✓ ' + t('signed') : t('pending')) + '</span></li>';
+    }).join('');
+  }
+
+  function renderMain() {
+    var d = state.data, me = d.me, env = d.envelope;
+    if (env.kind === 'template') {
+      $('tabs').hidden = false;
+      $('contract').innerHTML = H.contractHtml(d.content, state.lang);
+      document.querySelectorAll('.tabs button').forEach(function (b) {
+        b.setAttribute('aria-selected', String(b.dataset.lang === state.lang));
+      });
+    } else {
+      $('tabs').hidden = true;
+      var m = env.meta || {};
+      $('contract').innerHTML = '<h1 class="c-title">' + H.esc(m.title || 'ქირავნობის ხელშეკრულება / Договор аренды') + '</h1>' +
+        '<p class="c-num">№ ' + H.esc(env.number) + '</p><div class="meta">' +
+        (m.address ? '<div><span>' + t('address') + ':</span> ' + H.esc(m.address) + '</div>' : '') +
+        (m.cadastral ? '<div><span>' + t('cadastral') + ':</span> ' + H.esc(m.cadastral) + '</div>' : '') +
+        '</div><div class="pages">' + d.pages.map(function (src, i) {
+          return '<img loading="lazy" alt="' + (i + 1) + '" src="' + src + '">';
+        }).join('') + '</div>';
+    }
     $('who').innerHTML =
-      '<dt>' + t('name') + '</dt><dd>' + H.esc(e.agentName) + '</dd>' +
-      '<dt>' + t('pid') + '</dt><dd>' + H.esc(e.personalId) + '</dd>' +
-      '<dt>' + t('phone') + '</dt><dd>' + H.esc(e.phone) + '</dd>' +
-      '<dt>Telegram</dt><dd>' + (e.tgUsername ? '@' + H.esc(e.tgUsername) : 'ID ' + H.esc(e.tgId)) + '</dd>';
-    $('signer').textContent = e.agentName;
+      '<dt>' + t('role') + '</dt><dd>' + H.esc(me.roleLabel[state.lang]) + '</dd>' +
+      '<dt>' + t('name') + '</dt><dd>' + H.esc(me.name) + '</dd>' +
+      (me.personalId ? '<dt>' + t('pid') + '</dt><dd>' + H.esc(me.personalId) + '</dd>' : '') +
+      (me.phone ? '<dt>' + t('phone') + '</dt><dd>' + H.esc(me.phone) + '</dd>' : '') +
+      '<dt>Telegram</dt><dd>' + (me.tgUsername ? '@' + H.esc(me.tgUsername) : 'ID ' + H.esc(me.tgId)) + '</dd>';
+    $('parties').innerHTML = partiesHtml(d.signers);
+    $('signer').textContent = me.name;
+    $('consentText').innerHTML = env.kind === 'pdf' ? CONSENT.lease : (me.role === 'company' ? CONSENT.company : CONSENT.nda);
+    $('afterSign').textContent = t('afterSign');
     applyI18n();
   }
   document.querySelectorAll('.tabs button').forEach(function (b) {
-    b.onclick = function () { state.lang = b.dataset.lang; renderContract(); };
+    b.onclick = function () { state.lang = b.dataset.lang; renderMain(); };
   });
 
-  function showDone(env, delivered) {
-    $('doneText').textContent = '№ ' + env.number + (env.signedAtText ? ' · ' + env.signedAtText : '') +
-      (delivered === false ? ' — PDF: შეტყობინებას ვერ გამოგიგზავნეთ / не удалось отправить в чат, компания пришлёт копию.' :
-        ' — PDF გამოგზავნილია Telegram-ში / PDF отправлен вам в Telegram.');
-    $('doneHash').textContent = env.pdfHash ? 'SHA-256 PDF: ' + env.pdfHash : '';
-    applyI18n();
+  function showState(icon, title, text) {
+    $('doneIcon').textContent = icon; $('doneTitle').textContent = title; $('doneText').textContent = text;
+    $('doneHash').textContent = ''; $('retryBtn').hidden = true; $('doneErr').style.display = 'none';
     show('done');
   }
 
+  function showDone(env, delivered) {
+    showState('✅', both('doneTitle'), '№ ' + env.number + (delivered === false
+      ? ' — PDF: შეტყობინებას ვერ გამოგიგზავნეთ / не удалось отправить в чат, компания пришлёт копию.'
+      : ' — PDF გამოგზავნილია Telegram-ში / PDF отправлен вам в Telegram.'));
+    $('doneHash').textContent = env.pdfHash ? 'SHA-256 PDF: ' + env.pdfHash : '';
+  }
+
+  function showWaitingOthers(signers) {
+    var left = signers.filter(function (s) { return s.status !== 'signed'; });
+    showState('🕊', both('youSigned'), 'ველოდებით / Ждём подписи: ' + left.map(function (s) {
+      return s.name + ' (' + s.roleLabel.ru + ')';
+    }).join(', ') + '. PDF მოგივათ Telegram-ში / PDF придёт вам в Telegram.');
+  }
+
+  /* ───── сборка и отправка PDF (последний подписант) ───── */
+  function loadScript(src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = function () { rej(new Error('load ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function buildPdf(final) {
+    var d = state.data, env = d.envelope;
+    var job = function (logo) {
+      if (env.kind === 'template') {
+        return window.HigSignPdf.buildSignedPdf({ content: d.content, docHash: env.docHash, logoUrl: logo, signers: final.signers });
+      }
+      var ready = window.PDFLib ? Promise.resolve() : loadScript('assets/vendor/pdf-lib.min.js');
+      return ready.then(function () {
+        var m = env.meta || {};
+        return window.HigSignPdf.stampPdf({ sourceB64: final.source, number: env.number, title: m.title || 'Договор аренды',
+          fileName: m.fileName, docHash: env.docHash, logoUrl: logo, signers: final.signers });
+      });
+    };
+    // на слабых телефонах вторая попытка — без логотипа
+    return job('assets/logo-pdf.png').catch(function (e1) { console.warn('PDF retry', e1); return job(null); });
+  }
+
+  function finish(final) {
+    var env = state.data.envelope, step = 'pdf';
+    showState('⏳', both('finishing'), '№ ' + env.number);
+    try { tg.enableClosingConfirmation(); } catch (e) {}
+    return buildPdf(final).then(function (bytes) {
+      step = 'upload';
+      return H.api({ action: 'finalize', token: state.token, initData: tg.initData, pdf: H.bytesToBase64(bytes) });
+    }).then(function (r) {
+      try { tg.disableClosingConfirmation(); } catch (e) {}
+      try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+      env.pdfHash = r.pdfHash;
+      showDone(env, r.deliveredAgent);
+    }).catch(function (e) {
+      try { tg.disableClosingConfirmation(); } catch (x) {}
+      showErr(errText(e, step), $('doneErr'));
+      var b = $('retryBtn');
+      b.textContent = t('retry'); b.hidden = false;
+      b.onclick = function () { finish(final); };
+    });
+  }
+
+  $('signBtn').onclick = function () {
+    if (state.busy) return;
+    state.busy = true; updateBtn();
+    $('err').style.display = 'none';
+    var btn = $('signBtn'), env = state.data.envelope, sig;
+    try { sig = signaturePng(); } catch (e) { state.busy = false; updateBtn(); return showErr(H.errorText('bad_signature', 'both')); }
+    btn.textContent = t('signing');
+    requestWrite().then(function () { return clientIp(); }).then(function (ip) {
+      return H.api({
+        action: 'sign', token: state.token, initData: tg.initData, consent: true,
+        docHash: env.docHash, signature: sig,
+        client: { ip: ip, userAgent: navigator.userAgent, timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone }
+      });
+    }).then(function (r) {
+      state.data.signers = r.signers;
+      if (r.final) return finish(r.final);
+      try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+      showWaitingOthers(r.signers);
+    }).catch(function (e) {
+      state.busy = false;
+      btn.textContent = t('signBtn');
+      updateBtn();
+      showErr(errText(e, 'sign'));
+    });
+  };
+
   function requestWrite() {
     return new Promise(function (res) {
+      var done = false, fin = function (v) { if (!done) { done = true; res(v); } };
+      setTimeout(function () { fin(false); }, 15000);   // не ждём вечно, если Telegram не ответил
       try {
         var u = tg.initDataUnsafe && tg.initDataUnsafe.user;
-        if ((u && u.allows_write_to_pm) || !tg.isVersionAtLeast || !tg.isVersionAtLeast('6.9')) return res(true);
-        tg.requestWriteAccess(function (ok) { res(ok); });
-      } catch (e) { res(false); }
+        if ((u && u.allows_write_to_pm) || !tg.isVersionAtLeast || !tg.isVersionAtLeast('6.9')) return fin(true);
+        tg.requestWriteAccess(function (ok) { fin(ok); });
+      } catch (e) { fin(false); }
     });
   }
   function clientIp() {
@@ -295,55 +439,6 @@
       .then(function (r) { return r.json(); }).then(function (j) { return j.ip || ''; })
       .catch(function () { return ''; }).then(function (ip) { clearTimeout(timer); return ip; });
   }
-
-  $('signBtn').onclick = function () {
-    if (state.busy) return;
-    state.busy = true; updateBtn();
-    $('err').style.display = 'none';
-    var btn = $('signBtn'), env = state.data.envelope, sig, signedAtText, step = 'signature';
-    try { sig = signaturePng(); } catch (e) { state.busy = false; updateBtn(); return showErr('bad_signature'); }
-    btn.textContent = t('signing');
-    try { tg.enableClosingConfirmation(); } catch (e) {}
-    requestWrite().then(function () { return clientIp(); }).then(function (ip) {
-      return H.api({
-        action: 'sign', token: state.token, initData: tg.initData, consent: true,
-        docHash: env.docHash, signature: sig,
-        client: { ip: ip, userAgent: navigator.userAgent, timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone }
-      }).then(function (r) {
-        signedAtText = r.signedAtText;
-        step = 'pdf';
-        btn.textContent = t('building');
-        var job = function (logo) {
-          return window.HigSignPdf.buildSignedPdf({
-            content: state.data.content, docHash: env.docHash, signerName: env.agentName,
-            signedAtText: signedAtText, signatureDataUrl: sig, logoUrl: logo,
-            audit: { personalId: env.personalId, phone: env.phone, tgId: env.tgId, tgUsername: env.tgUsername,
-              ip: ip, userAgent: navigator.userAgent, timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone }
-          });
-        };
-        // На слабых телефонах вторая попытка — без логотипа
-        return job('assets/logo-pdf.png').catch(function (e1) {
-          console.warn('PDF retry', e1);
-          return job(null);
-        });
-      });
-    }).then(function (pdfBytes) {
-      step = 'upload';
-      return H.api({ action: 'finalize', token: state.token, initData: tg.initData, pdf: H.bytesToBase64(pdfBytes) });
-    }).then(function (r) {
-      try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
-      env.signedAtText = signedAtText; env.pdfHash = r.pdfHash;
-      try { tg.disableClosingConfirmation(); } catch (e) {}
-      showDone(env, r.deliveredAgent);
-    }).catch(function (e) {
-      try { tg.disableClosingConfirmation(); } catch (x) {}
-      state.busy = false;
-      btn.textContent = t('signBtn');
-      updateBtn();
-      if (e && e.code) showErr(e.code);
-      else showErr('client', step + ': ' + (e && (e.message || e.name) || String(e)));
-    });
-  };
 
   /* ───── старт ───── */
   function start() {
@@ -358,17 +453,25 @@
     state.lang = (u.user && u.user.language_code === 'ka') ? 'ka' : 'ru';
     state.token = u.start_param || new URLSearchParams(location.search).get('t') || '';
     if (!state.token) return fatal('not_found');
+    applyI18n();
     H.api({ action: 'open', token: state.token, initData: tg.initData }).then(function (data) {
       state.data = data;
-      $('num').textContent = '№ ' + data.envelope.number;
-      if (data.envelope.status === 'completed') return showDone(data.envelope);
-      renderContract();
+      var env = data.envelope;
+      $('num').textContent = '№ ' + env.number;
+      if (env.status === 'completed') return showDone(env);
+      if (data.waitingFor) {
+        return showState('⏳', both('waitTitle'), 'ჯერ ხელს აწერს / Сначала подписывает: ' + data.waitingFor.map(function (s) {
+          return s.name + ' (' + s.roleLabel.ru + ')';
+        }).join(', ') + '. ბმულს Telegram-ში მიიღებთ / Ссылку пришлём в Telegram.');
+      }
+      if (data.final) return finish(data.final);
+      if (data.me.status === 'signed') return showWaitingOthers(data.signers);
+      renderMain();
       show('main');
       sizePad();
       window.addEventListener('resize', sizePad);
-    }).catch(function (e) { fatal(e.code || 'network', e.detail); });
+    }).catch(function (e) { fatal(e.code || 'network', e.detail || (e.code ? '' : e.message)); });
   }
-  applyI18n();
   start();
 })();
 </script>

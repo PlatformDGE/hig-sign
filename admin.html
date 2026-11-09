@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;700&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root { --navy: #1D3560; --red: #D52B1E; --bg: #f2f4f8; --card: #fff; --text: #1a1f2b; --muted: #6b7280; --line: #e3e7ef;
-    --ok: #157f3b; --okbg: #e6f4ea; --warn: #8a5a00; --warnbg: #fff4d6; }
+    --ok: #157f3b; --okbg: #e6f4ea; --warn: #8a5a00; --warnbg: #fff4d6; --wa: #128C7E; --tg: #229ED9; }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) { --bg: #0f1522; --card: #182133; --text: #e8ecf3; --muted: #9aa5b8; --line: #2a3550;
       --okbg: #12301f; --ok: #6fd296; --warnbg: #3a2e10; --warn: #f0c46a; }
@@ -29,33 +29,45 @@
   main { max-width: 1100px; margin: 0 auto; padding: 18px 16px 40px; }
   .card { background: var(--card); border-radius: 14px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
   h2 { margin: 0 0 14px; font-size: 17px; }
+  h3 { margin: 16px 0 10px; font-size: 14px; color: var(--red); text-transform: uppercase; letter-spacing: .4px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
   label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
-  input, select, textarea { width: 100%; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 10px 12px; font: inherit; }
+  input, select { width: 100%; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 10px 12px; font: inherit; }
   input:focus, select:focus { outline: 2px solid rgba(29,53,96,.35); border-color: var(--navy); }
   .hint { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
-  .btn { border: 0; border-radius: 10px; padding: 10px 16px; font: inherit; font-weight: 700; cursor: pointer; background: var(--navy); color: #fff; }
+  .seg { display: flex; gap: 6px; background: var(--bg); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+  .seg button { flex: 1; border: 0; background: transparent; color: var(--text); padding: 10px; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); color: var(--navy); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { color: var(--text); } }
+  .btn { display: inline-block; text-decoration: none; border: 0; border-radius: 10px; padding: 10px 16px; font: inherit; font-weight: 700; cursor: pointer; background: var(--navy); color: #fff; }
   .btn.ghost { background: transparent; color: var(--navy); border: 1px solid var(--line); }
+  .btn.tg { background: var(--tg); } .btn.wa { background: var(--wa); }
+  .btn.small { padding: 6px 10px; font-size: 13px; border-radius: 8px; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.ghost { color: var(--text); } }
-  .btn.red { background: var(--red); }
   .btn:disabled { opacity: .5; cursor: default; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
   .msg { padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 14px; }
   .msg.err { background: #fdecea; color: #8a1c13; } .msg.warn { background: var(--warnbg); color: var(--warn); }
   .result { border: 2px solid var(--ok); background: var(--okbg); border-radius: 12px; padding: 14px; margin-top: 14px; }
-  .result code { display: block; word-break: break-all; font-size: 13px; margin: 6px 0 0; }
-  .tablewrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; white-space: nowrap; }
-  th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
-  td.name { white-space: normal; min-width: 160px; }
+  .signer-out { border-top: 1px solid rgba(0,0,0,.08); padding: 10px 0 0; margin-top: 10px; }
+  .signer-out code { display: block; word-break: break-all; font-size: 12.5px; margin: 4px 0 0; }
+  .env { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .env-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .env-head .num { font-weight: 700; }
+  .env-head .sp { flex: 1; }
+  .env .who { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 0 0; font-size: 14px; }
+  .env .who .nm { min-width: 180px; }
   .chip { display: inline-block; border-radius: 99px; padding: 2px 10px; font-size: 12.5px; font-weight: 600; }
-  .s-sent { background: #e8eefc; color: #1d3f9a; } .s-opened { background: var(--warnbg); color: var(--warn); }
-  .s-signed { background: #efe6fb; color: #5b2aa0; } .s-completed { background: var(--okbg); color: var(--ok); }
+  .s-sent { background: #e8eefc; color: #1d3f9a; } .s-opened, .s-signing { background: var(--warnbg); color: var(--warn); }
+  .s-signed, .s-ready { background: #efe6fb; color: #5b2aa0; } .s-completed { background: var(--okbg); color: var(--ok); }
   .s-cancelled { background: #eee; color: #666; }
   a { color: var(--red); }
   .mini { background: none; border: 0; color: var(--red); cursor: pointer; font: inherit; font-weight: 600; padding: 2px 4px; }
   .login { max-width: 420px; margin: 60px auto; }
+  .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 16px; text-align: center; }
+  .drop input { border: 0; padding: 6px 0; }
+  .thumbs { display: flex; gap: 6px; overflow-x: auto; margin-top: 10px; }
+  .thumbs img { height: 110px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
   footer { text-align: center; font-size: 12px; color: var(--muted); padding: 10px; }
   [hidden] { display: none !important; }
 </style>
@@ -81,32 +93,54 @@
 
     <section class="card">
       <h2>Новый договор на подпись</h2>
-      <div id="createErr" class="msg err" hidden></div>
-      <div class="grid">
-        <div><label for="tpl">Шаблон</label><select id="tpl"></select></div>
-        <div><label for="agentName">ФИО агента *</label><input id="agentName" placeholder="Нино Беридзе"></div>
-        <div><label for="personalId">Личный номер / паспорт *</label><input id="personalId" inputmode="numeric" placeholder="01001012345"></div>
-        <div><label for="phone">Телефон *</label><input id="phone" inputmode="tel" placeholder="+995 5XX XX XX XX"></div>
-        <div>
-          <label for="telegram">Telegram username агента</label><input id="telegram" placeholder="@username">
-          <div class="hint">Рекомендуем: подписать сможет только этот аккаунт.</div>
-        </div>
-        <div><label for="note">Заметка (видна только вам)</label><input id="note" placeholder="например: новый агент, аренда"></div>
+      <div class="seg" role="group" aria-label="Тип договора">
+        <button type="button" data-kind="template" aria-pressed="true">NDA агента</button>
+        <button type="button" data-kind="pdf" aria-pressed="false">Договор аренды (PDF)</button>
       </div>
-      <div class="actions"><button class="btn" id="createBtn">Создать ссылку на подпись</button></div>
+      <div id="createErr" class="msg err" hidden></div>
+
+      <!-- NDA -->
+      <div id="formTemplate">
+        <div class="grid">
+          <div><label for="tpl">Шаблон</label><select id="tpl"></select></div>
+          <div><label for="a_name">ФИО агента *</label><input id="a_name" placeholder="Нино Беридзе"></div>
+          <div><label for="a_pid">Личный номер / паспорт *</label><input id="a_pid" inputmode="numeric" placeholder="01001012345"></div>
+          <div><label for="a_phone">Телефон *</label><input id="a_phone" inputmode="tel" placeholder="+995 5XX XX XX XX"></div>
+          <div><label for="a_tg">Telegram username агента</label><input id="a_tg" placeholder="@username">
+            <div class="hint">Рекомендуем: подписать сможет только этот аккаунт.</div></div>
+          <div><label for="a_note">Заметка (видна только вам)</label><input id="a_note" placeholder="например: новый агент"></div>
+        </div>
+        <p class="hint" id="companyHint" style="margin-top:12px"></p>
+      </div>
+
+      <!-- Аренда -->
+      <div id="formPdf" hidden>
+        <div class="drop">
+          <label for="pdfFile">PDF договора аренды (заполненный, до 10 МБ)</label>
+          <input id="pdfFile" type="file" accept="application/pdf,.pdf">
+          <div class="hint" id="pdfInfo">Текст договора не меняется — подписи сторон добавятся внизу каждой страницы.</div>
+          <div class="thumbs" id="thumbs"></div>
+        </div>
+        <div class="grid" style="margin-top:12px">
+          <div><label for="l_title">Название</label><input id="l_title" value="Договор аренды"></div>
+          <div><label for="l_addr">Адрес объекта</label><input id="l_addr" placeholder="Тбилиси, ул. …"></div>
+          <div><label for="l_cad">Кадастровый код</label><input id="l_cad" placeholder="01.14.12.001.001"></div>
+          <div><label for="l_note">Заметка (видна только вам)</label><input id="l_note"></div>
+        </div>
+        <div id="leaseSigners"></div>
+      </div>
+
+      <div class="actions"><button class="btn" id="createBtn">Создать ссылки на подпись</button></div>
       <div id="result" class="result" hidden></div>
     </section>
 
     <section class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
         <h2 style="margin:0">Договоры</h2>
         <div><a id="registry" target="_blank" rel="noopener" hidden>Реестр в Google Таблице</a>
-          <button class="btn ghost" id="refresh">Обновить</button></div>
+          <button class="btn ghost small" id="refresh">Обновить</button></div>
       </div>
-      <div class="tablewrap"><table>
-        <thead><tr><th>№</th><th>Агент</th><th>Статус</th><th>Создан</th><th>Подписан</th><th>PDF</th><th></th></tr></thead>
-        <tbody id="rows"><tr><td colspan="7">Загрузка…</td></tr></tbody>
-      </table></div>
+      <div id="rows">Загрузка…</div>
     </section>
   </div>
 </main>
@@ -118,8 +152,11 @@
 (function () {
   'use strict';
   var H = window.HigSign, $ = function (id) { return document.getElementById(id); };
-  var KEY = 'higsign.adminKey', key = '';
-  var STATUS = { sent: 'Отправлен', opened: 'Открыт', signed: 'Подписывается', completed: 'Подписан ✓', cancelled: 'Отменён' };
+  var KEY = 'higsign.adminKey', key = '', kind = 'template', pdfState = null, info = null;
+  var STATUS = { sent: 'Отправлен', opened: 'Открыт', signing: 'Подписывается', ready: 'Собирается PDF',
+    signed: 'Подписал ✓', completed: 'Подписан ✓', cancelled: 'Отменён' };
+  var LEASE_ROLES = [['tenant', 'Арендатор'], ['owner', 'Собственник']];
+
   function store(v) { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) {} }
   function stored() { try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
   function fmt(iso) {
@@ -127,30 +164,39 @@
     var d = new Date(iso); if (isNaN(d)) return H.esc(iso);
     return d.toLocaleString('ru-RU', { timeZone: 'Asia/Tbilisi', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
-  function shareUrl(link, name) {
-    var text = 'Здравствуйте' + (name ? ', ' + name : '') + '! Homes in Georgia: откройте ссылку и подпишите договор о конфиденциальности (NDA). / გთხოვთ, გახსნათ ბმული და მოაწეროთ ხელი ხელშეკრულებას.';
-    return 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text);
+  function shareText(env, s) {
+    return 'Здравствуйте, ' + s.name + '! Homes in Georgia: откройте ссылку в Telegram и подпишите договор № ' + env.number +
+      '. / გამარჯობა! გახსენით ბმული Telegram-ში და მოაწერეთ ხელი ხელშეკრულებას № ' + env.number + '.';
   }
   function copy(text, btn) {
     var done = function () { var o = btn.textContent; btn.textContent = 'Скопировано'; setTimeout(function () { btn.textContent = o; }, 1500); };
     if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { prompt('Скопируйте ссылку:', text); });
     else prompt('Скопируйте ссылку:', text);
   }
+  function sendButtons(env, s, small) {
+    var cls = small ? ' small' : '';
+    return '<a class="btn tg' + cls + '" target="_blank" rel="noopener" href="' + H.esc(H.telegramShareUrl(s.link, shareText(env, s))) + '">Telegram</a>' +
+      '<a class="btn wa' + cls + '" target="_blank" rel="noopener" href="' + H.esc(H.whatsappUrl(s.phone, shareText(env, s) + ' ' + s.link)) + '">WhatsApp</a>' +
+      '<button class="btn ghost' + cls + '" data-copy="' + H.esc(s.link) + '">Ссылка</button>';
+  }
 
+  /* ───── вход ───── */
   function login(k) {
     $('loginErr').hidden = true;
-    return H.api({ action: 'adminInfo', key: k }).then(function (info) {
-      key = k; store(k);
+    return H.api({ action: 'adminInfo', key: k }).then(function (r) {
+      info = r; key = k; store(k);
       $('loginView').hidden = true; $('app').hidden = false; $('logout').hidden = false;
-      $('tpl').innerHTML = info.templates.map(function (t) {
+      $('tpl').innerHTML = r.templates.map(function (t) {
         return '<option value="' + H.esc(t.id) + '">' + H.esc(t.short.ru) + ' · v' + H.esc(t.version) + '</option>';
       }).join('');
+      $('companyHint').textContent = 'Второй подписант — компания: ' + r.company.signer + ' (@' + r.company.signerTg +
+        '). Ссылка придёт ему в Telegram автоматически после подписи агента.';
       var w = [];
-      if (!info.configured.bot) w.push('Бот подписи не настроен: заполните SIGN_BOT_TOKEN, BOT_USERNAME и APP_SHORT_NAME в свойствах скрипта.');
-      if (!info.configured.adminChats) w.push('Не указан ADMIN_CHAT_IDS — подписанные PDF не будут приходить вам в Telegram.');
-      if (!info.configured.storage) w.push('Хранилище не создано: запустите функцию setup() в Apps Script.');
+      if (!r.configured.bot) w.push('Бот подписи не настроен: заполните SIGN_BOT_TOKEN, BOT_USERNAME и APP_SHORT_NAME в свойствах скрипта.');
+      if (!r.configured.adminChats) w.push('Не указан ADMIN_CHAT_IDS — подписанные PDF не будут приходить вам в Telegram.');
+      if (!r.configured.storage) w.push('Хранилище не создано: запустите функцию setup() в Apps Script.');
       $('warns').innerHTML = w.map(function (x) { return '<div class="msg warn">' + H.esc(x) + '</div>'; }).join('');
-      if (info.registryUrl) { $('registry').href = info.registryUrl; $('registry').hidden = false; }
+      if (r.registryUrl) { $('registry').href = r.registryUrl; $('registry').hidden = false; }
       return loadList();
     }).catch(function (e) {
       store('');
@@ -159,56 +205,148 @@
     });
   }
 
-  function loadList() {
-    return H.api({ action: 'list', key: key }).then(function (r) {
-      if (!r.items.length) { $('rows').innerHTML = '<tr><td colspan="7">Пока нет договоров.</td></tr>'; return; }
-      $('rows').innerHTML = r.items.map(function (it) {
-        var act = '';
-        if (it.link) {
-          act += '<a class="mini" href="' + H.esc(shareUrl(it.link, it.agentName)) + '" target="_blank" rel="noopener">Telegram</a>' +
-            '<button class="mini" data-copy="' + H.esc(it.link) + '">Ссылка</button>' +
-            '<button class="mini" data-cancel="' + H.esc(it.token) + '">Отменить</button>';
-        }
-        return '<tr><td><b>' + H.esc(it.number) + '</b></td>' +
-          '<td class="name">' + H.esc(it.agentName) + (it.tgUsername || it.tgExpected ? '<br><span class="hint">@' + H.esc(it.tgUsername || it.tgExpected) + '</span>' : '') + '</td>' +
-          '<td><span class="chip s-' + H.esc(it.status) + '">' + H.esc(STATUS[it.status] || it.status) + '</span></td>' +
-          '<td>' + fmt(it.createdAt) + '</td><td>' + fmt(it.signedAt) + '</td>' +
-          '<td>' + (it.pdfUrl ? '<a href="' + H.esc(it.pdfUrl) + '" target="_blank" rel="noopener">Открыть</a>' : '—') + '</td>' +
-          '<td>' + act + '</td></tr>';
-      }).join('');
-    }).catch(function (e) {
-      $('rows').innerHTML = '<tr><td colspan="7">' + H.esc(H.errorText(e.code, 'ru')) + '</td></tr>';
-    });
-  }
+  /* ───── форма ───── */
+  $('leaseSigners').innerHTML = LEASE_ROLES.map(function (r) {
+    var p = 'l_' + r[0] + '_';
+    return '<h3>' + r[1] + '</h3><div class="grid">' +
+      '<div><label for="' + p + 'name">ФИО *</label><input id="' + p + 'name"></div>' +
+      '<div><label for="' + p + 'pid">Личный номер / паспорт *</label><input id="' + p + 'pid"></div>' +
+      '<div><label for="' + p + 'phone">Телефон (для WhatsApp) *</label><input id="' + p + 'phone" inputmode="tel" placeholder="+995 5XX XX XX XX"></div>' +
+      '<div><label for="' + p + 'tg">Telegram username</label><input id="' + p + 'tg" placeholder="@username">' +
+      '<div class="hint">Если указать — подписать сможет только этот аккаунт.</div></div></div>';
+  }).join('');
 
-  $('rows').addEventListener('click', function (e) {
-    var b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.copy) copy(b.dataset.copy, b);
-    if (b.dataset.cancel && confirm('Отменить этот договор? Ссылка перестанет работать.')) {
-      H.api({ action: 'cancel', key: key, token: b.dataset.cancel }).then(loadList, function (err) { alert(H.errorText(err.code, 'ru')); });
-    }
+  document.querySelectorAll('.seg button').forEach(function (b) {
+    b.onclick = function () {
+      kind = b.dataset.kind;
+      document.querySelectorAll('.seg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      $('formTemplate').hidden = kind !== 'template'; $('formPdf').hidden = kind !== 'pdf';
+      $('result').hidden = true; $('createErr').hidden = true;
+    };
   });
+
+  /** PDF → base64 + картинки страниц (для просмотра на телефоне подписанта). */
+  var pdfjsReady = null;
+  function pdfjs() {
+    if (!pdfjsReady) {
+      pdfjsReady = import('./assets/vendor/pdf.min.mjs').then(function (lib) {
+        lib.GlobalWorkerOptions.workerSrc = new URL('assets/vendor/pdf.worker.min.mjs', location.href).href;
+        return lib;
+      });
+    }
+    return pdfjsReady;
+  }
+  $('pdfFile').onchange = function () {
+    var f = this.files && this.files[0];
+    pdfState = null; $('thumbs').innerHTML = '';
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { $('pdfInfo').textContent = 'Файл больше 10 МБ — сожмите PDF.'; return; }
+    $('pdfInfo').textContent = 'Готовим страницы…';
+    var bytes;
+    f.arrayBuffer().then(function (buf) {
+      bytes = new Uint8Array(buf);
+      return pdfjs().then(function (lib) { return lib.getDocument({ data: bytes.slice() }).promise; });
+    }).then(function (doc) {
+      if (doc.numPages > 40) throw new Error('В PDF больше 40 страниц');
+      var pages = [], chain = Promise.resolve();
+      for (var i = 1; i <= doc.numPages; i++) {
+        (function (n) {
+          chain = chain.then(function () { return doc.getPage(n); }).then(function (page) {
+            var vp1 = page.getViewport({ scale: 1 });
+            var vp = page.getViewport({ scale: 1100 / vp1.width });
+            var c = document.createElement('canvas');
+            c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+            var ctx = c.getContext('2d');
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+            return page.render({ canvasContext: ctx, viewport: vp }).promise.then(function () {
+              var url = c.toDataURL('image/jpeg', 0.72);
+              pages.push(url);
+              var im = new Image(); im.src = url; $('thumbs').appendChild(im);
+              $('pdfInfo').textContent = 'Страниц готово: ' + pages.length + ' из ' + doc.numPages;
+            });
+          });
+        })(i);
+      }
+      return chain.then(function () {
+        pdfState = { b64: H.bytesToBase64(bytes), pages: pages, name: f.name };
+        $('pdfInfo').textContent = f.name + ' · страниц: ' + pages.length + '. Текст не меняется — подписи добавятся внизу каждой страницы.';
+      });
+    }).catch(function (e) {
+      $('pdfInfo').textContent = 'Не удалось открыть PDF: ' + (e && e.message || e);
+    });
+  };
+
+  function val(id) { return $(id).value; }
 
   $('createBtn').onclick = function () {
     var btn = this; btn.disabled = true; $('createErr').hidden = true; $('result').hidden = true;
-    var payload = { action: 'create', key: key, template: $('tpl').value,
-      agentName: $('agentName').value, personalId: $('personalId').value, phone: $('phone').value,
-      telegram: $('telegram').value, note: $('note').value };
+    var payload;
+    if (kind === 'template') {
+      payload = { action: 'create', key: key, kind: 'template', template: val('tpl'), agentName: val('a_name'),
+        personalId: val('a_pid'), phone: val('a_phone'), telegram: val('a_tg'), note: val('a_note') };
+    } else {
+      if (!pdfState) { $('createErr').textContent = 'Выберите PDF договора и дождитесь, пока подготовятся страницы.'; $('createErr').hidden = false; btn.disabled = false; return; }
+      payload = { action: 'create', key: key, kind: 'pdf', pdf: pdfState.b64, pages: pdfState.pages, fileName: pdfState.name,
+        title: val('l_title'), address: val('l_addr'), cadastral: val('l_cad'), note: val('l_note'),
+        signers: LEASE_ROLES.map(function (r) {
+          var p = 'l_' + r[0] + '_';
+          return { role: r[0], name: val(p + 'name'), personalId: val(p + 'pid'), phone: val(p + 'phone'), telegram: val(p + 'tg') };
+        }) };
+    }
+    btn.textContent = 'Создаём…';
     H.api(payload).then(function (r) {
-      var e = r.envelope;
-      $('result').innerHTML = '<b>Готово: ' + H.esc(e.number) + ' — ' + H.esc(e.agentName) + '</b>' +
-        '<div class="hint">Отправьте ссылку агенту в Telegram. Договор откроется прямо в Telegram, агент распишется пальцем, PDF придёт ему и вам.</div>' +
-        '<code>' + H.esc(r.link) + '</code>' +
-        '<div class="actions"><a class="btn" href="' + H.esc(shareUrl(r.link, e.agentName)) + '" target="_blank" rel="noopener">Отправить в Telegram</a>' +
-        '<button class="btn ghost" id="copyNew">Скопировать ссылку</button></div>';
+      var env = r.envelope;
+      $('result').innerHTML = '<b>Готово: ' + H.esc(env.number) + '</b>' +
+        '<div class="hint">Отправьте каждому его ссылку. Договор откроется в Telegram, подписывают пальцем; PDF придёт всем, когда подпишут все стороны.</div>' +
+        env.signers.map(function (s) {
+          var auto = s.role === 'company';
+          return '<div class="signer-out"><b>' + H.esc(s.roleLabel.ru) + ': ' + H.esc(s.name) + '</b>' +
+            (auto ? '<div class="hint">Отправлять не нужно: ссылка придёт в Telegram автоматически после подписи агента.</div>' : '') +
+            '<code>' + H.esc(s.link) + '</code>' + (auto ? '' : '<div class="actions">' + sendButtons(env, s) + '</div>') + '</div>';
+        }).join('');
       $('result').hidden = false;
-      $('copyNew').onclick = function () { copy(r.link, this); };
-      ['agentName', 'personalId', 'phone', 'telegram', 'note'].forEach(function (id) { $(id).value = ''; });
+      document.querySelectorAll('#formTemplate input, #formPdf input').forEach(function (i) {
+        if (i.id !== 'l_title') i.value = '';
+      });
+      pdfState = null; $('thumbs').innerHTML = '';
+      $('pdfInfo').textContent = 'Текст договора не меняется — подписи сторон добавятся внизу каждой страницы.';
       loadList();
     }).catch(function (e) {
       $('createErr').textContent = H.errorText(e.code, 'ru'); $('createErr').hidden = false;
-    }).then(function () { btn.disabled = false; });
+    }).then(function () { btn.disabled = false; btn.textContent = 'Создать ссылки на подпись'; });
   };
+
+  /* ───── список ───── */
+  function loadList() {
+    return H.api({ action: 'list', key: key }).then(function (r) {
+      if (!r.items.length) { $('rows').innerHTML = '<p class="hint">Пока нет договоров.</p>'; return; }
+      $('rows').innerHTML = r.items.map(function (env) {
+        var title = env.kind === 'pdf' ? ((env.meta && env.meta.title) || 'Договор аренды') : 'NDA агента';
+        var open = env.status !== 'completed' && env.status !== 'cancelled';
+        return '<div class="env"><div class="env-head"><span class="num">' + H.esc(env.number) + '</span>' +
+          '<span class="hint">' + H.esc(title) + (env.meta && env.meta.address ? ' · ' + H.esc(env.meta.address) : '') + ' · ' + fmt(env.createdAt) + '</span>' +
+          '<span class="sp"></span><span class="chip s-' + H.esc(env.status) + '">' + H.esc(STATUS[env.status] || env.status) + '</span>' +
+          (env.pdfUrl ? '<a href="' + H.esc(env.pdfUrl) + '" target="_blank" rel="noopener">PDF</a>' : '') +
+          (open ? '<button class="mini" data-cancel="' + H.esc(env.id) + '">Отменить</button>' : '') + '</div>' +
+          env.signers.map(function (s) {
+            return '<div class="who"><span class="nm"><b>' + H.esc(s.name) + '</b> <span class="hint">' + H.esc(s.roleLabel.ru) +
+              (s.tgUsername || s.tgExpected ? ' · @' + H.esc(s.tgUsername || s.tgExpected) : '') + '</span></span>' +
+              '<span class="chip s-' + H.esc(s.status) + '">' + H.esc(STATUS[s.status] || s.status) +
+              (s.signedAt ? ' ' + fmt(s.signedAt) : '') + '</span>' + (s.link ? sendButtons(env, s, true) : '') + '</div>';
+          }).join('') + '</div>';
+      }).join('');
+    }).catch(function (e) {
+      $('rows').innerHTML = '<p class="msg err">' + H.esc(H.errorText(e.code, 'ru')) + '</p>';
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.copy) copy(b.dataset.copy, b);
+    if (b.dataset.cancel && confirm('Отменить этот договор? Ссылки перестанут работать.')) {
+      H.api({ action: 'cancel', key: key, id: b.dataset.cancel }).then(loadList, function (err) { alert(H.errorText(err.code, 'ru')); });
+    }
+  });
 
   $('loginBtn').onclick = function () { login($('key').value.trim()); };
   $('key').onkeydown = function (e) { if (e.key === 'Enter') login(this.value.trim()); };

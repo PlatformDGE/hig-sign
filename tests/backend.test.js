@@ -1,5 +1,5 @@
 /*
- * Тесты бэкенда HiG Sign: node tests/backend.test.js
+ * Тесты бэкенда HiG Sign v2: node tests/backend.test.js
  * Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia
  */
 'use strict';
@@ -12,141 +12,181 @@ gas.ctx.setup();
 const KEY = gas.state.props.ADMIN_KEY;
 let passed = 0;
 const test = (name, fn) => { fn(); passed++; console.log('  ✓ ' + name); };
+const init = (user, token) => makeInitData(BOT, user, token);
 
-const agentUser = { id: 777001, first_name: 'Нино', last_name: 'Беридзе', username: 'Nino_Agent', language_code: 'ka', allows_write_to_pm: true };
-const strangerUser = { id: 999, first_name: 'X', username: 'someone_else' };
+const agentUser = { id: 777001, first_name: 'Нино', username: 'Nino_Agent', language_code: 'ka' };
+const david = { id: 500500, first_name: 'David', username: 'davidtibelashvili' };
+const tenantUser = { id: 300001, first_name: 'Anna', username: 'anna_tenant' };
+const ownerUser = { id: 300002, first_name: 'Giorgi' };
+const stranger = { id: 999, first_name: 'X', username: 'someone_else' };
 const PNG = 'data:image/png;base64,' + Buffer.from('\x89PNG\r\n\x1a\nfake').toString('base64');
 const PDF = Buffer.from('%PDF-1.4\n%test\n%%EOF\n').toString('base64');
+const JPG = 'data:image/jpeg;base64,' + Buffer.from('jpegdata').toString('base64');
 
-test('setup создаёт реестр, папку и пароль', () => {
-  assert.ok(gas.state.props.SHEET_ID && gas.state.props.FOLDER_ID && KEY.length >= 64);
+test('setup: реестр, листы Envelopes и Signers, пароль', () => {
+  const book = gas.state.sheets[gas.state.props.SHEET_ID];
+  assert.ok(book.tabs.Envelopes[0].includes('kind') && book.tabs.Signers[0].includes('envelopeId'));
+  assert.ok(KEY.length >= 64);
 });
 
-test('админ: неверный пароль → forbidden', () => {
-  assert.deepStrictEqual(gas.post({ action: 'adminInfo', key: 'nope' }), { ok: false, error: 'forbidden' });
-});
-
-test('админ: adminInfo видит шаблон NDA и настройки', () => {
+test('админ: неверный пароль → forbidden; adminInfo знает подписанта компании', () => {
+  assert.strictEqual(gas.post({ action: 'adminInfo', key: 'nope' }).error, 'forbidden');
   const r = gas.post({ action: 'adminInfo', key: KEY });
-  assert.ok(r.ok); assert.strictEqual(r.templates[0].id, 'nda-agent');
-  assert.deepStrictEqual(r.configured, { bot: true, adminChats: true, storage: true });
+  assert.strictEqual(r.company.signerTg, 'davidtibelashvili');
+  assert.strictEqual(r.configured.whatsapp, false);
 });
 
-test('создание: проверка обязательных полей', () => {
-  assert.strictEqual(gas.post({ action: 'create', key: KEY, template: 'nda-agent', agentName: 'A' }).error, 'phone_required');
-  assert.strictEqual(gas.post({ action: 'create', key: KEY, template: 'nda-agent', agentName: 'A', phone: '1', personalId: '1', telegram: '@a b' }).error, 'bad_telegram');
-});
-
-let env1;
-test('создание договора: номер, ссылка Mini App, текст сохранён', () => {
-  const r = gas.post({ action: 'create', key: KEY, template: 'nda-agent', agentName: 'Нино Беридзе',
-    personalId: '01001012345', phone: '+995 555 12 34 56', telegram: '@Nino_Agent' });
+/* ───── NDA: агент → компания ───── */
+let nda, agentTok, davidTok;
+test('NDA: создаётся с двумя подписантами по очереди', () => {
+  const r = gas.post({ action: 'create', key: KEY, kind: 'template', template: 'nda-agent',
+    agentName: 'Нино Беридзе', personalId: '01001012345', phone: '+995 555 12 34 56', telegram: '@Nino_Agent' });
   assert.ok(r.ok, JSON.stringify(r));
-  env1 = r.envelope;
-  assert.match(env1.number, /^NDA-\d{4}-0001$/);
-  assert.match(r.link, /^https:\/\/t\.me\/homesingeorgia_sign_bot\/sign\?startapp=s[a-f0-9]{40}$/);
-  assert.strictEqual(env1.personalId, '01001012345', 'ведущий ноль сохранён');
-  assert.strictEqual(env1.phone, '+995 555 12 34 56');
-  const r2 = gas.post({ action: 'create', key: KEY, template: 'nda-agent', agentName: 'B', personalId: '2', phone: '3' });
-  assert.match(r2.envelope.number, /-0002$/);
+  nda = r.envelope;
+  assert.match(nda.number, /^NDA-\d{4}-0001$/);
+  assert.deepStrictEqual(nda.signers.map((s) => [s.role, s.order, s.tgExpected]), [['agent', 1, 'Nino_Agent'], ['company', 2, 'davidtibelashvili']]);
+  assert.match(nda.signers[0].link, /startapp=s[a-f0-9]{40}$/);
+  assert.strictEqual(nda.signers[0].personalId, '01001012345');
+  agentTok = nda.signers[0].token; davidTok = nda.signers[1].token;
 });
 
-test('открытие: поддельный initData отклоняется', () => {
-  const bad = makeInitData('999:other-bot', agentUser, env1.token);
-  assert.strictEqual(gas.post({ action: 'open', token: env1.token, initData: bad }).error, 'bad_init_data');
-  const tampered = makeInitData(BOT, agentUser, env1.token).replace('Nino_Agent', 'Hacker');
-  assert.strictEqual(gas.post({ action: 'open', token: env1.token, initData: tampered }).error, 'bad_init_data');
+test('NDA: компания не может подписать раньше агента', () => {
+  const o = gas.post({ action: 'open', token: davidTok, initData: init(david, davidTok) });
+  assert.ok(o.ok);
+  assert.strictEqual(o.waitingFor[0].name, 'Нино Беридзе');
+  assert.ok(!o.content, 'текст не отдаём, пока не очередь');
+  const s = gas.post({ action: 'sign', token: davidTok, initData: init(david, davidTok), signature: PNG, consent: true, docHash: 'x' });
+  assert.strictEqual(s.error, 'not_your_turn');
+  assert.strictEqual(gas.state.props.COMPANY_SIGNER_CHAT_ID, '500500', 'chat id Давида запомнен');
 });
 
-test('открытие: устаревший initData отклоняется', () => {
-  const old = makeInitData(BOT, agentUser, env1.token, Math.floor(Date.now() / 1000) - 2 * 86400);
-  assert.strictEqual(gas.post({ action: 'open', token: env1.token, initData: old }).error, 'init_data_expired');
+test('NDA: чужой и поддельный Telegram не проходят', () => {
+  assert.strictEqual(gas.post({ action: 'open', token: agentTok, initData: init(stranger, agentTok) }).error, 'wrong_user');
+  assert.strictEqual(gas.post({ action: 'open', token: agentTok, initData: makeInitData('9:x', agentUser, agentTok) }).error, 'bad_init_data');
+  const old = makeInitData(BOT, agentUser, agentTok, Math.floor(Date.now() / 1000) - 2 * 86400);
+  assert.strictEqual(gas.post({ action: 'open', token: agentTok, initData: old }).error, 'init_data_expired');
 });
 
-test('открытие: чужой Telegram не может открыть договор для @Nino_Agent', () => {
-  const r = gas.post({ action: 'open', token: env1.token, initData: makeInitData(BOT, strangerUser, env1.token) });
-  assert.strictEqual(r.error, 'wrong_user');
+let openedAgent;
+test('NDA: агент открывает — текст на двух языках, в реквизитах две подписи', () => {
+  openedAgent = gas.post({ action: 'open', token: agentTok, initData: init(agentUser, agentTok) });
+  assert.ok(openedAgent.ok, JSON.stringify(openedAgent));
+  const all = JSON.stringify(openedAgent.content);
+  assert.ok(all.includes('დავით ტიბელაშვილი') && all.includes('Давида Тибелашвили'));
+  assert.ok(all.includes('{{signature:company}}') && all.includes('{{signature:agent}}'));
+  assert.strictEqual(openedAgent.content.version, '1.1');
 });
 
-let opened;
-test('открытие агентом: текст на двух языках, реквизиты Homes in Georgia, уведомление админам', () => {
+test('NDA: проверки при подписи', () => {
+  const b = { action: 'sign', token: agentTok, initData: init(agentUser, agentTok), signature: PNG, consent: true, docHash: openedAgent.envelope.docHash };
+  assert.strictEqual(gas.post(Object.assign({}, b, { consent: false })).error, 'consent_required');
+  assert.strictEqual(gas.post(Object.assign({}, b, { docHash: 'x' })).error, 'doc_changed');
+  assert.strictEqual(gas.post(Object.assign({}, b, { signature: 'data:image/jpeg;base64,AA' })).error, 'bad_signature');
+});
+
+test('NDA: агент подписал → ждём компанию, Давиду пришла кнопка «Подписать»', () => {
   const before = gas.state.fetches.length;
-  opened = gas.post({ action: 'open', token: env1.token, initData: makeInitData(BOT, agentUser, env1.token) });
-  assert.ok(opened.ok, JSON.stringify(opened));
-  assert.strictEqual(opened.envelope.status, 'opened');
-  assert.strictEqual(String(opened.envelope.tgId), '777001');
-  const c = opened.content;
-  assert.ok(c.title.ka.includes('ხელშეკრულება') && c.title.ru.includes('Договор-оферта'));
-  const all = JSON.stringify(c);
-  assert.ok(all.includes('დავით ტიბელაშვილი') && all.includes('Давида Тибелашвили') && all.includes('hge.ge'));
-  assert.ok(!/\{\{(agent|doc)\./.test(all), 'все переменные подставлены');
-  assert.ok(!/ID-код|юридический адрес/.test(all), 'нет ID-кода и адреса компании');
-  const table = c.blocks.find((b) => b.t === 'table');
-  assert.strictEqual(table.rows[0].agent, 'Нино Беридзе');
-  assert.strictEqual(gas.state.fetches.length - before, 2, 'два админ-чата уведомлены');
-});
-
-test('подпись: нужен docHash, согласие и картинка', () => {
-  const init = makeInitData(BOT, agentUser, env1.token);
-  const base = { action: 'sign', token: env1.token, initData: init, signature: PNG, consent: true, docHash: opened.envelope.docHash };
-  assert.strictEqual(gas.post(Object.assign({}, base, { consent: false })).error, 'consent_required');
-  assert.strictEqual(gas.post(Object.assign({}, base, { docHash: 'x' })).error, 'doc_changed');
-  assert.strictEqual(gas.post(Object.assign({}, base, { signature: 'data:image/jpeg;base64,AAAA' })).error, 'bad_signature');
-  assert.strictEqual(gas.post(Object.assign({}, base, { initData: makeInitData(BOT, strangerUser, env1.token) })).error, 'wrong_user');
-});
-
-let signed;
-test('подпись агентом: время сервера по Тбилиси', () => {
-  signed = gas.post({ action: 'sign', token: env1.token, initData: makeInitData(BOT, agentUser, env1.token),
-    signature: PNG, consent: true, docHash: opened.envelope.docHash, client: { ip: '203.0.113.7', userAgent: 'UA', timezone: 'Asia/Tbilisi' } });
-  assert.ok(signed.ok, JSON.stringify(signed));
-  assert.match(signed.signedAtText, /^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2}$/);
-});
-
-test('финализация: PDF проверяется, сохраняется и уходит админам и агенту', () => {
-  const init = makeInitData(BOT, agentUser, env1.token);
-  assert.strictEqual(gas.post({ action: 'finalize', token: env1.token, initData: init, pdf: Buffer.from('not a pdf').toString('base64') }).error, 'bad_pdf');
-  const before = gas.state.fetches.length;
-  const r = gas.post({ action: 'finalize', token: env1.token, initData: init, pdf: PDF });
+  const r = gas.post({ action: 'sign', token: agentTok, initData: init(agentUser, agentTok), signature: PNG, consent: true,
+    docHash: openedAgent.envelope.docHash, client: { ip: '203.0.113.7', userAgent: 'UA', timezone: 'Asia/Tbilisi' } });
   assert.ok(r.ok, JSON.stringify(r));
-  assert.match(r.pdfHash, /^[a-f0-9]{64}$/);
-  assert.strictEqual(r.deliveredAgent, true);
-  const sent = gas.state.fetches.slice(before);
-  assert.strictEqual(sent.length, 3);
-  assert.ok(sent.every((f) => f.url.endsWith('/sendDocument')));
-  assert.deepStrictEqual(sent.map((f) => f.opts.payload.chat_id), ['111', '-100222', '777001']);
-  const again = gas.post({ action: 'finalize', token: env1.token, initData: init, pdf: PDF });
-  assert.ok(again.already);
+  assert.ok(!r.final, 'PDF ещё рано');
+  const msgs = gas.state.fetches.slice(before).map((f) => f.opts.payload);
+  const toDavid = msgs.find((m) => m.chat_id === '500500');
+  assert.ok(toDavid && JSON.parse(toDavid.reply_markup).inline_keyboard[0][0].url.endsWith(davidTok));
+  assert.ok(msgs.some((m) => m.chat_id === '111' && m.text.includes(davidTok)), 'админам тоже ссылка');
 });
 
-test('после подписания: повторная подпись и отмена невозможны, список показывает PDF', () => {
-  const init = makeInitData(BOT, agentUser, env1.token);
-  assert.strictEqual(gas.post({ action: 'sign', token: env1.token, initData: init, signature: PNG, consent: true, docHash: opened.envelope.docHash }).error, 'bad_status');
-  assert.strictEqual(gas.post({ action: 'cancel', key: KEY, token: env1.token }).error, 'already_signed');
-  const list = gas.post({ action: 'list', key: KEY });
-  const row = list.items.find((i) => i.token === env1.token);
+let davidFinal;
+test('NDA: Давид подписывает последним → получает данные для PDF (обе подписи)', () => {
+  const o = gas.post({ action: 'open', token: davidTok, initData: init(david, davidTok) });
+  assert.ok(!o.waitingFor && o.content);
+  const r = gas.post({ action: 'sign', token: davidTok, initData: init(david, davidTok), signature: PNG, consent: true, docHash: o.envelope.docHash });
+  assert.ok(r.ok && r.final, JSON.stringify(r));
+  assert.deepStrictEqual(r.final.signers.map((s) => s.role), ['agent', 'company']);
+  assert.ok(r.final.signers.every((s) => s.signature.startsWith('data:image/png;base64,')));
+  assert.strictEqual(r.final.signers[0].ip, '203.0.113.7');
+  davidFinal = r.final;
+});
+
+test('NDA: если PDF не дошёл — повторное открытие снова отдаёт данные для PDF', () => {
+  const o = gas.post({ action: 'open', token: davidTok, initData: init(david, davidTok) });
+  assert.ok(o.final && o.final.signers.length === 2);
+});
+
+test('NDA: финализация — PDF админам, агенту и Давиду', () => {
+  const before = gas.state.fetches.length;
+  assert.strictEqual(gas.post({ action: 'finalize', token: davidTok, initData: init(david, davidTok), pdf: Buffer.from('nope').toString('base64') }).error, 'bad_pdf');
+  const r = gas.post({ action: 'finalize', token: davidTok, initData: init(david, davidTok), pdf: PDF });
+  assert.ok(r.ok && /^[a-f0-9]{64}$/.test(r.pdfHash));
+  const docs = gas.state.fetches.slice(before).filter((f) => f.url.endsWith('/sendDocument')).map((f) => f.opts.payload.chat_id);
+  assert.deepStrictEqual(docs, ['111', '-100222', '777001', '500500']);
+  assert.ok(gas.post({ action: 'finalize', token: agentTok, initData: init(agentUser, agentTok), pdf: PDF }).already);
+  const row = gas.post({ action: 'list', key: KEY }).items.find((i) => i.id === nda.id);
   assert.strictEqual(row.status, 'completed');
-  assert.match(row.pdfUrl, /^https:\/\/drive\.google\.com\/file\/d\//);
-  assert.strictEqual(row.link, '');
+  assert.ok(row.signers.every((s) => s.status === 'signed' && !s.link));
+  assert.strictEqual(gas.post({ action: 'cancel', key: KEY, id: nda.id }).error, 'already_signed');
+});
+
+/* ───── Аренда: ваш PDF, арендатор + собственник ───── */
+let lease, tenTok, ownTok;
+test('аренда: проверки при создании', () => {
+  const base = { action: 'create', key: KEY, kind: 'pdf', pdf: PDF, pages: [JPG, JPG],
+    signers: [{ role: 'tenant', name: 'Anna', personalId: 'P123', phone: '+995 599 000 001', telegram: 'anna_tenant' },
+      { role: 'owner', name: 'Гиорги', personalId: '01001000001', phone: '+995 599 000 002' }] };
+  assert.strictEqual(gas.post(Object.assign({}, base, { pdf: Buffer.from('x').toString('base64') })).error, 'bad_pdf');
+  assert.strictEqual(gas.post(Object.assign({}, base, { pages: [] })).error, 'bad_pages');
+  assert.strictEqual(gas.post(Object.assign({}, base, { signers: [base.signers[0]] })).error, 'two_signers_required');
+  assert.strictEqual(gas.post(Object.assign({}, base, { signers: [{ role: 'company', name: 'x', phone: '1', personalId: '1' }, base.signers[1]] })).error, 'bad_role');
+  const r = gas.post(Object.assign({}, base, { address: 'Тбилиси, Ваке', cadastral: '01.14.12.001.001', fileName: 'lease.pdf' }));
+  assert.ok(r.ok, JSON.stringify(r));
+  lease = r.envelope;
+  assert.match(lease.number, /^RENT-\d{4}-0001$/);
+  assert.strictEqual(lease.meta.cadastral, '01.14.12.001.001');
+  assert.ok(lease.signers.every((s) => s.order === 1 && s.link));
+  [tenTok, ownTok] = lease.signers.map((s) => s.token);
+});
+
+test('аренда: оба подписывают в любом порядке; страницы оригинала показываются', () => {
+  const o = gas.post({ action: 'open', token: ownTok, initData: init(ownerUser, ownTok) });
+  assert.ok(o.ok && o.pages.length === 2 && !o.content && !o.waitingFor);
+  const s1 = gas.post({ action: 'sign', token: ownTok, initData: init(ownerUser, ownTok), signature: PNG, consent: true, docHash: o.envelope.docHash });
+  assert.ok(s1.ok && !s1.final);
+  assert.strictEqual(gas.post({ action: 'open', token: tenTok, initData: init(stranger, tenTok) }).error, 'wrong_user');
+  const t = gas.post({ action: 'open', token: tenTok, initData: init(tenantUser, tenTok) });
+  const s2 = gas.post({ action: 'sign', token: tenTok, initData: init(tenantUser, tenTok), signature: PNG, consent: true, docHash: t.envelope.docHash });
+  assert.ok(s2.final && s2.final.source === PDF, 'последний получает оригинал PDF');
+  assert.deepStrictEqual(s2.final.signers.map((x) => x.role).sort(), ['owner', 'tenant']);
+  const f = gas.post({ action: 'finalize', token: tenTok, initData: init(tenantUser, tenTok), pdf: PDF });
+  assert.ok(f.ok && f.deliveredAgent === true);
 });
 
 test('отменённый договор не открывается', () => {
-  const r = gas.post({ action: 'create', key: KEY, template: 'nda-agent', agentName: 'C', personalId: '5', phone: '6' });
-  assert.ok(gas.post({ action: 'cancel', key: KEY, token: r.envelope.token }).ok);
-  assert.strictEqual(gas.post({ action: 'open', token: r.envelope.token, initData: makeInitData(BOT, strangerUser) }).error, 'cancelled');
+  const r = gas.post({ action: 'create', key: KEY, kind: 'template', template: 'nda-agent', agentName: 'C', personalId: '5', phone: '6' });
+  assert.ok(gas.post({ action: 'cancel', key: KEY, id: r.envelope.id }).ok);
+  const t = r.envelope.signers[0].token;
+  assert.strictEqual(gas.post({ action: 'open', token: t, initData: init(stranger, t) }).error, 'cancelled');
 });
 
-test('без username: договор привязывается к первому открывшему', () => {
-  const r = gas.post({ action: 'create', key: KEY, template: 'nda-agent', agentName: 'D', personalId: '7', phone: '8' });
-  const t = r.envelope.token;
-  assert.ok(gas.post({ action: 'open', token: t, initData: makeInitData(BOT, strangerUser) }).ok);
-  assert.strictEqual(gas.post({ action: 'open', token: t, initData: makeInitData(BOT, agentUser) }).error, 'wrong_user');
+test('обновление со старой версии: старые строки не мешают', () => {
+  const g = createGas({ SIGN_BOT_TOKEN: BOT, BOT_USERNAME: 'b', APP_SHORT_NAME: 'sign' });
+  g.ctx.setup();
+  const book = g.state.sheets[g.state.props.SHEET_ID];
+  // как в v1: свой набор колонок и одна старая строка, лист Signers отсутствует
+  book.tabs.Envelopes = [['token', 'number', 'template', 'status', 'agentName'], ['s123', 'NDA-2026-0001', 'nda-agent', 'signed', 'Old']];
+  delete book.tabs.Signers;
+  const k = g.state.props.ADMIN_KEY;
+  assert.deepStrictEqual(g.post({ action: 'list', key: k }).items, []);
+  const r = g.post({ action: 'create', key: k, kind: 'template', template: 'nda-agent', agentName: 'New', personalId: '1', phone: '2' });
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.match(r.envelope.number, /-0002$/, 'нумерация продолжается после старых');
+  assert.ok(book.tabs.Envelopes[0].slice(0, 5).join() === 'token,number,template,status,agentName' && book.tabs.Envelopes[0].includes('kind'));
+  assert.ok(book.tabs.Signers);
 });
 
 test('мусор на входе не роняет сервер', () => {
   assert.strictEqual(gas.postRaw('{oops').error, 'bad_json');
   assert.strictEqual(gas.post({ action: 'drop' }).error, 'unknown_action');
-  assert.strictEqual(gas.post({ action: 'open', token: '../x', initData: makeInitData(BOT, agentUser) }).error, 'not_found');
+  assert.strictEqual(gas.post({ action: 'open', token: '../x', initData: init(agentUser) }).error, 'not_found');
 });
 
 console.log('\nbackend: ' + passed + ' tests passed');

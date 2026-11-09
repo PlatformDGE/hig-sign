@@ -45,18 +45,36 @@ function createGas(props) {
     };
   }
 
-  function sheet(sid) {
-    const s = state.sheets[sid];
+  // Таблица: state.sheets[ssId] = { name, tabs: { tabName: [[...rows]] } }
+  function sheet(ssId, tab) {
+    const book = state.sheets[ssId];
+    const data = () => book.tabs[tab];
     const strip = (v) => (typeof v === 'string' && v[0] === "'" ? v.slice(1) : v);
+    const width = () => data().reduce((m, r) => Math.max(m, r.length), 0);
     return {
-      setName(n) { s.name = n; }, setFrozenRows() {},
-      appendRow(row) { s.data.push(row.map(strip)); },
-      getDataRange: () => ({ getValues: () => s.data.map((r) => r.slice()) }),
+      setName(n) { book.tabs[n] = book.tabs[tab]; delete book.tabs[tab]; tab = n; },
+      setFrozenRows() {},
+      appendRow(row) { data().push(row.map(strip)); },
+      getDataRange: () => ({ getValues: () => { const w = width(); return data().map((r) => Array.from({ length: w }, (_, i) => (r[i] === undefined ? '' : r[i]))); } }),
       getMaxRows: () => 1000,
-      getRange(r, c) {
+      getLastColumn: () => width(),
+      getRange(r, c, nr, nc) {
         return {
-          setValues(v) { v.forEach((row, i) => { s.data[r - 1 + i] = row.map(strip); }); },
-          setValue(v) { while (s.data.length < r) s.data.push([]); s.data[r - 1][c - 1] = strip(v); },
+          getValues() {
+            const out = [];
+            for (let i = 0; i < (nr || 1); i++) {
+              const row = data()[r - 1 + i] || [];
+              out.push(Array.from({ length: nc || 1 }, (_, j) => (row[c - 1 + j] === undefined ? '' : row[c - 1 + j])));
+            }
+            return out;
+          },
+          setValues(v) {
+            v.forEach((vals, i) => {
+              while (data().length < r + i) data().push([]);
+              vals.forEach((x, j) => { data()[r - 1 + i][c - 1 + j] = strip(x); });
+            });
+          },
+          setValue(v) { while (data().length < r) data().push([]); data()[r - 1][c - 1] = strip(v); },
           setNumberFormat() {}
         };
       }
@@ -79,6 +97,7 @@ function createGas(props) {
       computeDigest: (alg, data) => toSigned(crypto.createHash(alg).update(toBuf(data)).digest()),
       newBlob: makeBlob,
       base64Decode: (s) => toSigned(Buffer.from(s, 'base64')),
+      base64Encode: (b) => toBuf(b).toString('base64'),
       getUuid: () => crypto.randomUUID(),
       formatDate(d, tz, f) {
         const p = fmtParts(d, tz === 'UTC' ? 'UTC' : tz);
@@ -93,8 +112,11 @@ function createGas(props) {
       setProperty: (k, v) => { state.props[k] = v; }
     }) },
     SpreadsheetApp: {
-      create(name) { const sid = id('sheet'); state.sheets[sid] = { name, data: [] }; return { getId: () => sid, getSheets: () => [sheet(sid)] }; },
-      openById: (sid) => ({ getSheetByName: () => sheet(sid) })
+      create(name) { const sid = id('sheet'); state.sheets[sid] = { name, tabs: { 'Лист1': [] } }; return { getId: () => sid, getSheets: () => [sheet(sid, 'Лист1')] }; },
+      openById: (sid) => ({
+        getSheetByName: (n) => (state.sheets[sid].tabs[n] ? sheet(sid, n) : null),
+        insertSheet: (n) => { state.sheets[sid].tabs[n] = []; return sheet(sid, n); }
+      })
     },
     DriveApp: {
       createFolder(name) { const fid = id('fld'); state.folders[fid] = { id: fid, name, parent: null }; return folder(fid); },

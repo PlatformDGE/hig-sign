@@ -10,7 +10,7 @@
 var TEMPLATES = {
   'nda-agent': {
     id: 'nda-agent',
-    version: '1.0',
+    version: '1.1',
     prefix: 'NDA',
     title: {
       ka: 'ოფერტის ხელშეკრულება კონფიდენციალურობისა და გაუმჟღავნებლობის შესახებ (NDA) Homes in Georgia-ს აგენტებისთვის',

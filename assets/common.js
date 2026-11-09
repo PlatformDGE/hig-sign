@@ -25,6 +25,11 @@
     bad_telegram: { ru: 'Telegram username: 4–32 символа, латиница, цифры и _.', ka: 'Telegram username: 4–32 სიმბოლო.' },
     already_signed: { ru: 'Договор уже подписан — отменить нельзя.', ka: 'ხელშეკრულება უკვე ხელმოწერილია.' },
     client: { ru: 'Не удалось собрать PDF на этом устройстве. Пришлите скриншот этой ошибки в компанию.', ka: 'PDF-ის შექმნა ამ მოწყობილობაზე ვერ მოხერხდა. გაუგზავნეთ ამ შეცდომის სქრინშოტი კომპანიას.' },
+    not_your_turn: { ru: 'Сначала договор должна подписать другая сторона. Мы пришлём вам ссылку, когда придёт ваша очередь.', ka: 'ჯერ ხელშეკრულებას ხელს სხვა მხარე აწერს. თქვენი რიგის დადგომისას ბმულს გამოგიგზავნით.' },
+    bad_pdf: { ru: 'Файл не похож на PDF или слишком большой (до 10 МБ).', ka: 'ფაილი არ არის PDF ან ძალიან დიდია.' },
+    bad_pages: { ru: 'Не удалось подготовить страницы PDF (до 40 страниц).', ka: 'PDF-ის გვერდების მომზადება ვერ მოხერხდა.' },
+    two_signers_required: { ru: 'Укажите обоих подписантов.', ka: 'მიუთითეთ ორივე ხელმომწერი.' },
+    bad_role: { ru: 'Неверная роль подписанта.', ka: 'ხელმომწერის როლი არასწორია.' },
     network: { ru: 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.', ka: 'სერვერთან კავშირი ვერ დამყარდა. სცადეთ თავიდან.' },
     not_configured: { ru: 'Система ещё не подключена к серверу (API_URL в assets/config.js).', ka: 'სისტემა ჯერ არ არის დაკავშირებული სერვერთან.' }
   };
@@ -99,8 +104,9 @@
   /** Реквизиты в Mini App: две карточки (Компания / Агент) — на телефоне таблица слишком узкая. */
   function tableHtml(b, lang, extra) {
     var cell = function (v) {
-      if (v === '{{signature}}') return extra.signatureHtml || '<i>' + (lang === 'ka' ? 'ხელმოწერა ქვემოთ' : 'подпись ниже') + '</i>';
-      if (v === '{{signedAt}}') return esc(extra.signedAtText || (lang === 'ka' ? 'შეივსება ავტომატურად' : 'заполнится автоматически'));
+      var m = /^\{\{(signature|signedAt)(?::(\w+))?\}\}$/.exec(String(v));
+      if (m && m[1] === 'signature') return '<i>' + (lang === 'ka' ? 'ელექტრონული ხელმოწერა' : 'электронная подпись') + '</i>';
+      if (m) return '<i>' + (lang === 'ka' ? 'შეივსება ავტომატურად' : 'заполнится автоматически') + '</i>';
       return esc(v);
     };
     return ['company', 'agent'].map(function (side) {
@@ -109,6 +115,17 @@
         return '<dt>' + esc(r.label[lang]) + '</dt><dd>' + cell(r[side]) + '</dd>';
       }).join('') + '</dl></div>';
     }).join('');
+  }
+
+  /** Номер телефона → ссылка WhatsApp (грузинские 9 цифр получают +995). */
+  function whatsappUrl(phone, text) {
+    var d = String(phone || '').replace(/\D/g, '');
+    if (/^5\d{8}$/.test(d)) d = '995' + d;
+    return 'https://wa.me/' + d + '?text=' + encodeURIComponent(text);
+  }
+
+  function telegramShareUrl(link, text) {
+    return 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text);
   }
 
   function bytesToBase64(bytes) {
@@ -121,6 +138,7 @@
 
   global.HigSign = {
     api: api, esc: esc, runs: runs, inlineHtml: inlineHtml, contractHtml: contractHtml,
-    errorText: errorText, codeError: codeError, bytesToBase64: bytesToBase64
+    errorText: errorText, codeError: codeError, bytesToBase64: bytesToBase64,
+    whatsappUrl: whatsappUrl, telegramShareUrl: telegramShareUrl
   };
 })(window);

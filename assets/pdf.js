@@ -2,9 +2,11 @@
  * HiG Sign — сборка подписанного PDF прямо в браузере подписанта.
  * Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia
  *
- * Страницы A4 рисуются на canvas (грузинский слева, русский справа, подпись внизу каждой
- * страницы, последний лист — протокол подписания), затем упаковываются в PDF (JPEG-страницы).
- * Внешних библиотек нет: грузинский и русский шрифты рисует сам браузер.
+ * • NDA (шаблон): страницы A4 рисуются на canvas — грузинский слева, русский справа, подписи
+ *   всех сторон внизу каждой страницы, в конце протокол подписания; страницы → PDF (JPEG).
+ * • Договор аренды (ваш PDF): страницы оригинала не меняются — они чуть уменьшаются, а под
+ *   ними добавляется полоса с подписями сторон (pdf-lib); в конце протокол подписания.
+ * Грузинский и русский текст рисует сам браузер, поэтому шрифты в PDF не нужны.
  */
 (function (global) {
   'use strict';
@@ -123,29 +125,28 @@
     this.y += 44;
   };
 
-  /** Таблица реквизитов на всю ширину; подпись агента — картинкой в ячейке. */
-  Layout.prototype.table = function (b, ctx2) {
+  /** Таблица реквизитов на всю ширину; подписи сторон — картинками в ячейках. */
+  Layout.prototype.table = function (b, d) {
     var ctx = this.ctx, self = this;
     var widths = [0.30, 0.35, 0.35].map(function (f) { return (W - 2 * M) * f; });
     var pad = 12, size = 17, lh = 24;
     var head = [['', ''], [b.head.company.ka, b.head.company.ru], [b.head.agent.ka, b.head.agent.ru]];
     var rows = [{ head: true, cells: head.map(function (h) { return h[0] ? h[0] + ' / ' + h[1] : ''; }) }];
-    b.rows.forEach(function (r) {
-      rows.push({ cells: [r.label.ka + ' / ' + r.label.ru, r.company, r.agent] });
-    });
+    b.rows.forEach(function (r) { rows.push({ cells: [r.label.ka + ' / ' + r.label.ru, r.company, r.agent] }); });
     rows.forEach(function (r) {
       var cellLines = r.cells.map(function (v, i) {
-        if (v === '{{signature}}') return 'SIG';
-        if (v === '{{signedAt}}') v = ctx2.signedAtText + ' (Asia/Tbilisi)';
+        var m = /^\{\{(signature|signedAt)(?::(\w+))?\}\}$/.exec(String(v));
+        if (m && m[1] === 'signature') return { sig: m[2] || d.signers[0].role };
+        if (m) { var s = byRole(d, m[2]); v = s && s.signedAtText ? s.signedAtText + ' (Asia/Tbilisi)' : '—'; }
         return wrap(ctx, [{ text: String(v), bold: !!r.head || i === 0 }], widths[i] - 2 * pad, size);
       });
-      var hgt = Math.max.apply(null, cellLines.map(function (l) { return l === 'SIG' ? 3.6 : l.length; })) * lh + 2 * pad;
+      var hgt = Math.max.apply(null, cellLines.map(function (l) { return l.sig ? 3.6 : l.length; })) * lh + 2 * pad;
       if (self.room() < hgt) self.newPage();
       var x = M;
       cellLines.forEach(function (lines, i) {
         self.page.push({ k: 'rect', x: x, y: self.y, w: widths[i], h: hgt, fill: r.head ? '#eef2f8' : (i === 0 ? '#f7f9fc' : null) });
-        if (lines === 'SIG') {
-          self.page.push({ k: 'sig', x: x + pad, y: self.y + pad, w: widths[i] - 2 * pad, h: hgt - 2 * pad });
+        if (lines.sig) {
+          self.page.push({ k: 'sig', role: lines.sig, x: x + pad, y: self.y + pad, w: widths[i] - 2 * pad, h: hgt - 2 * pad });
         } else {
           lines.forEach(function (ln, j) {
             self.page.push({ k: 'line', line: ln, x: x + pad, y: self.y + pad + (j + 1) * lh - 6, size: size, color: r.head ? NAVY : INK });
@@ -158,21 +159,87 @@
     this.y += 16;
   };
 
+  /** Таблица «ключ — значение» (протокол), переносится на новую страницу при нехватке места. */
+  Layout.prototype.kv = function (rows) {
+    var ctx = this.ctx, self = this;
+    var widths = [(W - 2 * M) * 0.36, (W - 2 * M) * 0.64], pad = 12, size = 17, lh = 24;
+    rows.forEach(function (r) {
+      var c0 = wrap(ctx, [{ text: r[0], bold: true }], widths[0] - 2 * pad, size);
+      var c1 = r[2] ? null : wrap(ctx, [{ text: String(r[1] || '—'), bold: false }], widths[1] - 2 * pad, size);
+      var hgt = (r[2] ? 4 : Math.max(c0.length, c1.length)) * lh + 2 * pad;
+      if (self.room() < hgt) self.newPage();
+      self.page.push({ k: 'rect', x: M, y: self.y, w: widths[0], h: hgt, fill: '#f7f9fc' });
+      self.page.push({ k: 'rect', x: M + widths[0], y: self.y, w: widths[1], h: hgt });
+      c0.forEach(function (ln, j) { self.page.push({ k: 'line', line: ln, x: M + pad, y: self.y + pad + (j + 1) * lh - 6, size: size, color: NAVY }); });
+      if (r[2]) self.page.push({ k: 'sig', role: r[2], x: M + widths[0] + pad, y: self.y + pad, w: 360, h: hgt - 2 * pad });
+      else c1.forEach(function (ln, j) { self.page.push({ k: 'line', line: ln, x: M + widths[0] + pad, y: self.y + pad + (j + 1) * lh - 6, size: size }); });
+      self.y += hgt;
+    });
+  };
+
+  Layout.prototype.heading = function (text, size, color) {
+    if (this.room() < 140) this.newPage();
+    this.page.push({ k: 'text', text: text, x: M, y: this.y + size + 4, size: size, bold: true, color: color || NAVY });
+    this.y += size + 22;
+  };
+
+  Layout.prototype.paragraph = function (text) {
+    var self = this;
+    wrap(this.ctx, [{ text: text, bold: false }], W - 2 * M, S.body).forEach(function (ln) {
+      if (self.room() < S.lh) self.newPage();
+      self.page.push({ k: 'line', line: ln, x: M, y: self.y + S.lh - 7, size: S.body }); self.y += S.lh;
+    });
+    this.y += 14;
+  };
+
+  function byRole(d, role) {
+    return d.signers.filter(function (s) { return s.role === role; })[0];
+  }
+
   /* ───── рисование ───── */
-  function fitImage(ctx, img, x, y, w, h) {
+  function fitImage(ctx, img, x, y, w, h, alignRight) {
     if (!img || !img.width || !img.height) return;
     var r = Math.min(w / img.width, h / img.height);
     var dw = img.width * r, dh = img.height * r;
-    ctx.drawImage(img, x, y + (h - dh) / 2, dw, dh);
+    ctx.drawImage(img, alignRight ? x + w - dw : x, y + (h - dh) / 2, dw, dh);
+  }
+
+  /** Полоса с подписями всех сторон (низ каждой страницы). fy — её верх. */
+  function drawFooter(ctx, fy, n, total, d) {
+    ctx.fillStyle = LINE; ctx.fillRect(M, fy, W - 2 * M, 1.5);
+    var right = 150, colW = (W - 2 * M - right) / d.signers.length;
+    d.signers.forEach(function (s, i) {
+      var x = M + i * colW;
+      ctx.font = font(13, false); ctx.fillStyle = GREY;
+      ctx.fillText(s.roleLabel.ka + ' / ' + s.roleLabel.ru, x, fy + 26);
+      fitImage(ctx, s.img, x, fy + 32, Math.min(colW - 20, 240), 62);
+      ctx.font = font(14, true); ctx.fillStyle = INK;
+      ctx.fillText(clip(ctx, s.name, colW - 20), x, fy + 116);
+    });
+    ctx.textAlign = 'right';
+    ctx.font = font(S.small, false); ctx.fillStyle = GREY;
+    ctx.fillText('გვ. / Стр. ' + n + ' / ' + total, W - M, fy + 26);
+    ctx.font = font(13, true); ctx.fillStyle = NAVY;
+    ctx.fillText('№ ' + d.number, W - M, fy + 50);
+    ctx.textAlign = 'left';
+    ctx.font = font(12, false); ctx.fillStyle = GREY;
+    ctx.fillText('SHA-256: ' + d.docHash + '  ·  HiG Sign · hge.ge', M, fy + 142);
+    ctx.fillText('Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia', M, fy + 160);
+  }
+
+  function clip(ctx, text, w) {
+    text = String(text || '');
+    if (ctx.measureText(text).width <= w) return text;
+    while (text.length > 1 && ctx.measureText(text + '…').width > w) text = text.slice(0, -1);
+    return text + '…';
   }
 
   function drawPage(ctx, items, n, total, d) {
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
-    // шапка
     if (d.logo) fitImage(ctx, d.logo, M, 52, 190, 60);
     ctx.textAlign = 'right';
     ctx.font = font(S.small, true); ctx.fillStyle = NAVY;
-    ctx.fillText('№ ' + d.content.number, W - M, 74);
+    ctx.fillText('№ ' + d.number, W - M, 74);
     ctx.font = font(S.small, false); ctx.fillStyle = GREY;
     ctx.fillText('hge.ge · HiG Sign', W - M, 98);
     ctx.textAlign = 'left';
@@ -185,81 +252,53 @@
       else if (it.k === 'rect') {
         if (it.fill) { ctx.fillStyle = it.fill; ctx.fillRect(it.x, it.y, it.w, it.h); }
         ctx.strokeStyle = LINE; ctx.lineWidth = 1.5; ctx.strokeRect(it.x, it.y, it.w, it.h);
-      } else if (it.k === 'sig') fitImage(ctx, d.signature, it.x, it.y, it.w, it.h);
+      } else if (it.k === 'sig') { var s = byRole(d, it.role); if (s) fitImage(ctx, s.img, it.x, it.y, it.w, it.h); }
     });
-
-    // подвал: подпись на каждой странице
-    var fy = H - 170;
-    ctx.fillStyle = LINE; ctx.fillRect(M, fy, W - 2 * M, 1.5);
-    ctx.font = font(S.small, false); ctx.fillStyle = GREY;
-    ctx.fillText('აგენტის ხელმოწერა / Подпись Агента:', M, fy + 34);
-    ctx.font = font(S.small, true); ctx.fillStyle = INK;
-    ctx.fillText(d.signerName, M, fy + 58);
-    fitImage(ctx, d.signature, M + 330, fy + 10, 260, 80);
-    ctx.textAlign = 'right';
-    ctx.font = font(S.small, false); ctx.fillStyle = GREY;
-    ctx.fillText('გვ. / Стр. ' + n + ' / ' + total, W - M, fy + 34);
-    ctx.fillText(d.signedAtText + ' (Tbilisi)', W - M, fy + 58);
-    ctx.textAlign = 'left';
-    ctx.font = font(13, false); ctx.fillStyle = GREY;
-    ctx.fillText('SHA-256: ' + d.docHash, M, fy + 118);
-    ctx.fillText('Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia', M, fy + 140);
+    drawFooter(ctx, H - 170, n, total, d);
   }
 
-  function auditItems(ctx, d) {
+  /** Протокол подписания: документ + каждая сторона с подписью, IP, устройством, Telegram. */
+  function auditPages(ctx, d) {
     var L = new Layout(ctx);
-    var a = d.audit;
-    L.page.push({ k: 'text', text: 'ელექტრონული ხელმოწერის ოქმი', x: M, y: TOP + 26, size: S.title, bold: true, color: NAVY });
-    L.page.push({ k: 'text', text: 'Протокол электронного подписания', x: M, y: TOP + 62, size: S.title, bold: true, color: NAVY });
-    L.y = TOP + 90;
-    var rows = [
-      ['დოკუმენტი / Документ', '№ ' + d.content.number + ' · ' + d.content.title.ru],
-      ['შაბლონი / Шаблон', d.content.template + ' v' + d.content.version],
-      ['ხელმომწერი / Подписант', d.signerName],
-      ['პირადი ნომერი / Личный номер', a.personalId],
-      ['ტელეფონი / Телефон', a.phone],
-      ['Telegram (დადასტურებული / подтверждён)', (a.tgUsername ? '@' + a.tgUsername + ' · ' : '') + 'ID ' + a.tgId],
-      ['ხელმოწერის დრო (სერვერი) / Время подписания (сервер)', d.signedAtText + ' (Asia/Tbilisi)'],
-      ['IP-მისამართი / IP-адрес', a.ip || '—'],
-      ['მოწყობილობა / Устройство', a.userAgent || '—'],
-      ['საათის სარტყელი / Часовой пояс', a.timezone || '—'],
-      ['დოკუმენტის ჰეში / Хэш документа (SHA-256)', d.docHash]
-    ];
-    var widths = [(W - 2 * M) * 0.36, (W - 2 * M) * 0.64], pad = 12, size = 17, lh = 24;
-    rows.forEach(function (r) {
-      var c0 = wrap(ctx, [{ text: r[0], bold: true }], widths[0] - 2 * pad, size);
-      var c1 = wrap(ctx, [{ text: String(r[1]), bold: false }], widths[1] - 2 * pad, size);
-      var hgt = Math.max(c0.length, c1.length) * lh + 2 * pad;
-      L.page.push({ k: 'rect', x: M, y: L.y, w: widths[0], h: hgt, fill: '#f7f9fc' });
-      L.page.push({ k: 'rect', x: M + widths[0], y: L.y, w: widths[1], h: hgt });
-      c0.forEach(function (ln, j) { L.page.push({ k: 'line', line: ln, x: M + pad, y: L.y + pad + (j + 1) * lh - 6, size: size, color: NAVY }); });
-      c1.forEach(function (ln, j) { L.page.push({ k: 'line', line: ln, x: M + widths[0] + pad, y: L.y + pad + (j + 1) * lh - 6, size: size }); });
-      L.y += hgt;
+    L.heading('ელექტრონული ხელმოწერის ოქმი', S.title);
+    L.heading('Протокол электронного подписания', S.title);
+    L.kv([
+      ['დოკუმენტი / Документ', '№ ' + d.number + ' · ' + d.title],
+      [d.kind === 'pdf' ? 'ორიგინალი / Оригинал' : 'შაბლონი / Шаблон', d.source],
+      ['დოკუმენტის ჰეში / Хэш документа (SHA-256)', d.docHash],
+      ['მხარეები / Стороны', d.signers.map(function (s) { return s.roleLabel.ru + ': ' + s.name; }).join('; ')]
+    ]);
+    L.y += 24;
+    d.signers.forEach(function (s) {
+      L.heading(s.roleLabel.ka + ' / ' + s.roleLabel.ru + ' — ' + s.name, S.h2, RED);
+      L.kv([
+        ['პირადი ნომერი / Личный номер', s.personalId],
+        ['ტელეფონი / Телефон', s.phone],
+        ['Telegram (დადასტურებული / подтверждён)', (s.tgUsername ? '@' + s.tgUsername + ' · ' : '') + 'ID ' + s.tgId],
+        ['ხელმოწერის დრო (სერვერი) / Время подписания (сервер)', s.signedAtText + ' (Asia/Tbilisi)'],
+        ['IP-მისამართი / IP-адрес', s.ip],
+        ['მოწყობილობა / Устройство', s.userAgent],
+        ['საათის სარტყელი / Часовой пояс', s.timezone],
+        ['ხელმოწერა / Подпись', '', s.role]
+      ]);
+      L.y += 24;
     });
-    L.y += 30;
-    [
-      'ხელმომწერმა გაეცნო ხელშეკრულების სრულ ტექსტს, მონიშნა თანხმობის ველი და ეკრანზე საკუთარი ხელით მოაწერა ხელი. ხელმომწერის ვინაობა დადასტურებულია Telegram-ის მეშვეობით: Mini App-ის მონაცემები შემოწმებულია Telegram-ის ციფრული ხელმოწერით Homes in Georgia-ს სერვერზე.',
-      'Подписант ознакомился с полным текстом договора, поставил отметку согласия и собственноручно расписался на экране. Личность подписанта подтверждена через Telegram: данные Mini App проверены цифровой подписью Telegram на сервере Homes in Georgia.'
-    ].forEach(function (t) {
-      wrap(ctx, [{ text: t, bold: false }], W - 2 * M, S.body).forEach(function (ln) {
-        L.page.push({ k: 'line', line: ln, x: M, y: L.y + S.lh - 7, size: S.body }); L.y += S.lh;
-      });
-      L.y += 14;
-    });
-    L.page.push({ k: 'sig', x: M, y: L.y + 10, w: 420, h: 140 });
-    return L.page;
+    L.paragraph('თითოეულმა ხელმომწერმა გაეცნო დოკუმენტის სრულ ტექსტს, მონიშნა თანხმობის ველი და ეკრანზე საკუთარი ხელით მოაწერა ხელი. ხელმომწერების ვინაობა დადასტურებულია Telegram-ის მეშვეობით: Mini App-ის მონაცემები შემოწმებულია Telegram-ის ციფრული ხელმოწერით Homes in Georgia-ს სერვერზე.');
+    L.paragraph('Каждый подписант ознакомился с полным текстом документа, поставил отметку согласия и собственноручно расписался на экране. Личность подписантов подтверждена через Telegram: данные Mini App проверены цифровой подписью Telegram на сервере Homes in Georgia.');
+    return L.pages.filter(function (p) { return p.length; });
   }
 
-  /* ───── PDF из JPEG-страниц ───── */
+  /* ───── PDF из JPEG-страниц (для NDA) ───── */
   function dataUrlBytes(url) {
     var b64 = url.split(',')[1], bin = atob(b64), out = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
     return out;
   }
 
+  function b64Bytes(b64) { return dataUrlBytes('x,' + b64); }
+
   function pdfString(s) {
-    // UTF-16BE с BOM — для метаданных с кириллицей
-    var hex = 'FEFF';
+    var hex = 'FEFF';  // UTF-16BE с BOM — для метаданных с кириллицей
     for (var i = 0; i < s.length; i++) hex += ('000' + s.charCodeAt(i).toString(16)).slice(-4);
     return '<' + hex.toUpperCase() + '>';
   }
@@ -276,7 +315,7 @@
     obj(3, function () {
       add('<< /Title ' + pdfString(info.title) + ' /Author ' + pdfString('Irakli Kvirkvelia · Homes in Georgia') +
         ' /Subject ' + pdfString(info.subject) + ' /Producer ' + pdfString('HiG Sign · Made with Claude (Anthropic)') +
-        ' /CreationDate (D:' + info.date + ') >>');
+        ' /CreationDate (D:' + pdfDate() + ') >>');
     });
     jpegs.forEach(function (jpg, i) {
       var p = 4 + i * 3;
@@ -301,6 +340,12 @@
     return out;
   }
 
+  function pdfDate() {
+    var now = new Date(), pad = function (n) { return ('0' + n).slice(-2); };
+    return now.getUTCFullYear() + pad(now.getUTCMonth() + 1) + pad(now.getUTCDate()) +
+      pad(now.getUTCHours()) + pad(now.getUTCMinutes()) + pad(now.getUTCSeconds()) + 'Z';
+  }
+
   function loadImage(src) {
     return new Promise(function (res) {
       if (!src) return res(null);
@@ -323,42 +368,104 @@
     return Promise.race([Promise.all(loads), timeout]).catch(function () {});
   }
 
-  /**
-   * d = { content, docHash, signerName, signedAtText, signatureDataUrl, logoUrl,
-   *       audit: {personalId, phone, tgId, tgUsername, ip, userAgent, timezone} }
-   * → Promise<Uint8Array> (готовый PDF)
-   */
-  function buildSignedPdf(d) {
+  /** Общая подготовка: шрифты, картинки подписей и логотипа, canvas. */
+  function prepare(d) {
     return loadFonts().then(function () {
-      return Promise.all([loadImage(d.signatureDataUrl), loadImage(d.logoUrl)]);
+      return Promise.all([loadImage(d.logoUrl)].concat(d.signers.map(function (s) { return loadImage(s.signature); })));
     }).then(function (imgs) {
-      d.signature = imgs[0]; d.logo = imgs[1];
+      d.logo = imgs[0];
+      d.signers.forEach(function (s, i) { s.img = imgs[i + 1]; });
       var canvas = document.createElement('canvas');
       canvas.width = W; canvas.height = H;
       var ctx = canvas.getContext('2d');
       ctx.textBaseline = 'alphabetic';
+      return { canvas: canvas, ctx: ctx };
+    });
+  }
 
-      var L = new Layout(ctx);
+  /**
+   * NDA из шаблона.
+   * d = { content, docHash, logoUrl, signers: [{role, roleLabel, name, signature, signedAtText,
+   *       personalId, phone, tgId, tgUsername, ip, userAgent, timezone}] } → Promise<Uint8Array>
+   */
+  function buildSignedPdf(d) {
+    d.number = d.content.number; d.title = d.content.title.ru; d.kind = 'template';
+    d.source = d.content.template + ' v' + d.content.version;
+    return prepare(d).then(function (c) {
+      var L = new Layout(c.ctx);
       L.title(d.content);
-      d.content.blocks.forEach(function (b) {
-        if (b.t === 'table') L.table(b, d); else L.bilingual(b);
-      });
-      var pages = L.pages.filter(function (p) { return p.length; });
-      pages.push(auditItems(ctx, d));
-
+      d.content.blocks.forEach(function (b) { if (b.t === 'table') L.table(b, d); else L.bilingual(b); });
+      var pages = L.pages.filter(function (p) { return p.length; }).concat(auditPages(c.ctx, d));
       var jpegs = pages.map(function (items, i) {
-        drawPage(ctx, items, i + 1, pages.length, d);
-        return dataUrlBytes(canvas.toDataURL('image/jpeg', 0.75));
+        drawPage(c.ctx, items, i + 1, pages.length, d);
+        return dataUrlBytes(c.canvas.toDataURL('image/jpeg', 0.75));
       });
-      var now = new Date(), pad = function (n) { return ('0' + n).slice(-2); };
       return makePdf(jpegs, {
-        title: d.content.number + ' — ' + d.content.title.ru,
-        subject: 'Signed by ' + d.signerName + ' · SHA-256 ' + d.docHash,
-        date: now.getUTCFullYear() + pad(now.getUTCMonth() + 1) + pad(now.getUTCDate()) +
-          pad(now.getUTCHours()) + pad(now.getUTCMinutes()) + pad(now.getUTCSeconds()) + 'Z'
+        title: d.number + ' — ' + d.title,
+        subject: 'Signed by ' + d.signers.map(function (s) { return s.name; }).join(', ') + ' · SHA-256 ' + d.docHash
       });
     });
   }
 
-  global.HigSignPdf = { buildSignedPdf: buildSignedPdf, makePdf: makePdf };
+  /**
+   * Договор аренды: ваш PDF + полоса с подписями на каждой странице + протокол. Нужен pdf-lib.
+   * d = { sourceB64, number, title, fileName, docHash, logoUrl, signers: [...] } → Promise<Uint8Array>
+   */
+  function stampPdf(d) {
+    var PDFLib = global.PDFLib;
+    if (!PDFLib) return Promise.reject(new Error('pdf-lib not loaded'));
+    d.kind = 'pdf'; d.source = d.fileName || 'PDF';
+    var c, out, auditJpegs;
+    return prepare(d).then(function (cv) {
+      c = cv;
+      return PDFLib.PDFDocument.load(b64Bytes(d.sourceB64), { ignoreEncryption: true });
+    }).then(function (src) {
+      return PDFLib.PDFDocument.create().then(function (doc) {
+        out = doc;
+        return out.embedPdf(src, src.getPageIndices());
+      });
+    }).then(function (pages) {
+      var audit = auditPages(c.ctx, d);
+      var total = pages.length + audit.length;
+      auditJpegs = audit.map(function (items, i) {
+        drawPage(c.ctx, items, pages.length + i + 1, total, d);
+        return dataUrlBytes(c.canvas.toDataURL('image/jpeg', 0.75));
+      });
+      // полоса подписей: отдельный canvas 1240×190, масштабируется к ширине страницы
+      var band = document.createElement('canvas');
+      band.width = W; band.height = 190;
+      var bctx = band.getContext('2d');
+      var chain = Promise.resolve();
+      pages.forEach(function (ep, i) {
+        chain = chain.then(function () {
+          bctx.fillStyle = '#fff'; bctx.fillRect(0, 0, W, 190);
+          drawFooter(bctx, 8, i + 1, total, d);
+          return out.embedJpg(dataUrlBytes(band.toDataURL('image/jpeg', 0.85)));
+        }).then(function (img) {
+          var pw = ep.width, ph = ep.height;
+          var bandH = pw * 190 / W;
+          var scale = Math.min(1, (ph - bandH - 4) / ph);
+          var page = out.addPage([pw, ph]);
+          page.drawPage(ep, { x: (pw - pw * scale) / 2, y: bandH + 2, width: pw * scale, height: ph * scale });
+          page.drawImage(img, { x: 0, y: 0, width: pw, height: bandH });
+        });
+      });
+      return chain;
+    }).then(function () {
+      return Promise.all(auditJpegs.map(function (j) { return out.embedJpg(j); }));
+    }).then(function (imgs) {
+      imgs.forEach(function (img) {
+        var page = out.addPage([PT_W, PT_H]);
+        page.drawImage(img, { x: 0, y: 0, width: PT_W, height: PT_H });
+      });
+      out.setTitle(d.number + ' — ' + d.title);
+      out.setAuthor('Irakli Kvirkvelia · Homes in Georgia');
+      out.setSubject('Signed by ' + d.signers.map(function (s) { return s.name; }).join(', ') + ' · SHA-256 ' + d.docHash);
+      out.setProducer('HiG Sign · Made with Claude (Anthropic)');
+      out.setCreator('HiG Sign');
+      return out.save();
+    });
+  }
+
+  global.HigSignPdf = { buildSignedPdf: buildSignedPdf, stampPdf: stampPdf, makePdf: makePdf };
 })(window);
