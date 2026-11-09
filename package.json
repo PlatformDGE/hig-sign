@@ -1,0 +1,9 @@
+{
+  "name": "hig-sign",
+  "private": true,
+  "description": "HiG Sign — электронная подпись Homes in Georgia. Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia",
+  "author": "Irakli Kvirkvelia · Homes in Georgia",
+  "scripts": {
+    "test": "node tests/backend.test.js && node tests/e2e.test.js"
+  }
+}

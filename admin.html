@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="Irakli Kvirkvelia · Homes in Georgia">
+<meta name="robots" content="noindex">
+<title>HiG Sign — договоры</title>
+<!-- Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia -->
+<link rel="icon" href="assets/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;700&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --navy: #1D3560; --red: #D52B1E; --bg: #f2f4f8; --card: #fff; --text: #1a1f2b; --muted: #6b7280; --line: #e3e7ef;
+    --ok: #157f3b; --okbg: #e6f4ea; --warn: #8a5a00; --warnbg: #fff4d6; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0f1522; --card: #182133; --text: #e8ecf3; --muted: #9aa5b8; --line: #2a3550;
+      --okbg: #12301f; --ok: #6fd296; --warnbg: #3a2e10; --warn: #f0c46a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 'Noto Sans', 'Noto Sans Georgian', system-ui, sans-serif; }
+  .top { background: var(--navy); color: #fff; }
+  .top .in { max-width: 1100px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 14px; }
+  .top img { height: 30px; }
+  .top b { font-size: 16px; letter-spacing: .3px; }
+  .top .sp { flex: 1; }
+  .top button { background: rgba(255,255,255,.12); color: #fff; border: 0; border-radius: 8px; padding: 7px 12px; font: inherit; cursor: pointer; }
+  main { max-width: 1100px; margin: 0 auto; padding: 18px 16px 40px; }
+  .card { background: var(--card); border-radius: 14px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  h2 { margin: 0 0 14px; font-size: 17px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea { width: 100%; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 10px 12px; font: inherit; }
+  input:focus, select:focus { outline: 2px solid rgba(29,53,96,.35); border-color: var(--navy); }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .btn { border: 0; border-radius: 10px; padding: 10px 16px; font: inherit; font-weight: 700; cursor: pointer; background: var(--navy); color: #fff; }
+  .btn.ghost { background: transparent; color: var(--navy); border: 1px solid var(--line); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.ghost { color: var(--text); } }
+  .btn.red { background: var(--red); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .msg { padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 14px; }
+  .msg.err { background: #fdecea; color: #8a1c13; } .msg.warn { background: var(--warnbg); color: var(--warn); }
+  .result { border: 2px solid var(--ok); background: var(--okbg); border-radius: 12px; padding: 14px; margin-top: 14px; }
+  .result code { display: block; word-break: break-all; font-size: 13px; margin: 6px 0 0; }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; white-space: nowrap; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+  td.name { white-space: normal; min-width: 160px; }
+  .chip { display: inline-block; border-radius: 99px; padding: 2px 10px; font-size: 12.5px; font-weight: 600; }
+  .s-sent { background: #e8eefc; color: #1d3f9a; } .s-opened { background: var(--warnbg); color: var(--warn); }
+  .s-signed { background: #efe6fb; color: #5b2aa0; } .s-completed { background: var(--okbg); color: var(--ok); }
+  .s-cancelled { background: #eee; color: #666; }
+  a { color: var(--red); }
+  .mini { background: none; border: 0; color: var(--red); cursor: pointer; font: inherit; font-weight: 600; padding: 2px 4px; }
+  .login { max-width: 420px; margin: 60px auto; }
+  footer { text-align: center; font-size: 12px; color: var(--muted); padding: 10px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <img src="assets/logo-white.svg" alt="Homes in Georgia" onerror="this.hidden=true">
+  <b>HiG Sign</b><span class="sp"></span>
+  <button id="logout" hidden>Выйти</button>
+</div></div>
+
+<main>
+  <section id="loginView" class="card login">
+    <h2>Вход в админ-панель</h2>
+    <div id="loginErr" class="msg err" hidden></div>
+    <label for="key">Пароль (ADMIN_KEY)</label>
+    <input id="key" type="password" autocomplete="current-password">
+    <div class="actions"><button class="btn" id="loginBtn">Войти</button></div>
+  </section>
+
+  <div id="app" hidden>
+    <div id="warns"></div>
+
+    <section class="card">
+      <h2>Новый договор на подпись</h2>
+      <div id="createErr" class="msg err" hidden></div>
+      <div class="grid">
+        <div><label for="tpl">Шаблон</label><select id="tpl"></select></div>
+        <div><label for="agentName">ФИО агента *</label><input id="agentName" placeholder="Нино Беридзе"></div>
+        <div><label for="personalId">Личный номер / паспорт *</label><input id="personalId" inputmode="numeric" placeholder="01001012345"></div>
+        <div><label for="phone">Телефон *</label><input id="phone" inputmode="tel" placeholder="+995 5XX XX XX XX"></div>
+        <div>
+          <label for="telegram">Telegram username агента</label><input id="telegram" placeholder="@username">
+          <div class="hint">Рекомендуем: подписать сможет только этот аккаунт.</div>
+        </div>
+        <div><label for="note">Заметка (видна только вам)</label><input id="note" placeholder="например: новый агент, аренда"></div>
+      </div>
+      <div class="actions"><button class="btn" id="createBtn">Создать ссылку на подпись</button></div>
+      <div id="result" class="result" hidden></div>
+    </section>
+
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+        <h2 style="margin:0">Договоры</h2>
+        <div><a id="registry" target="_blank" rel="noopener" hidden>Реестр в Google Таблице</a>
+          <button class="btn ghost" id="refresh">Обновить</button></div>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>№</th><th>Агент</th><th>Статус</th><th>Создан</th><th>Подписан</th><th>PDF</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="7">Загрузка…</td></tr></tbody>
+      </table></div>
+    </section>
+  </div>
+</main>
+<footer>Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia</footer>
+
+<script src="assets/config.js"></script>
+<script src="assets/common.js"></script>
+<script>
+(function () {
+  'use strict';
+  var H = window.HigSign, $ = function (id) { return document.getElementById(id); };
+  var KEY = 'higsign.adminKey', key = '';
+  var STATUS = { sent: 'Отправлен', opened: 'Открыт', signed: 'Подписывается', completed: 'Подписан ✓', cancelled: 'Отменён' };
+  function store(v) { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) {} }
+  function stored() { try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
+  function fmt(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso); if (isNaN(d)) return H.esc(iso);
+    return d.toLocaleString('ru-RU', { timeZone: 'Asia/Tbilisi', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+  function shareUrl(link, name) {
+    var text = 'Здравствуйте' + (name ? ', ' + name : '') + '! Homes in Georgia: откройте ссылку и подпишите договор о конфиденциальности (NDA). / გთხოვთ, გახსნათ ბმული და მოაწეროთ ხელი ხელშეკრულებას.';
+    return 'https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(text);
+  }
+  function copy(text, btn) {
+    var done = function () { var o = btn.textContent; btn.textContent = 'Скопировано'; setTimeout(function () { btn.textContent = o; }, 1500); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { prompt('Скопируйте ссылку:', text); });
+    else prompt('Скопируйте ссылку:', text);
+  }
+
+  function login(k) {
+    $('loginErr').hidden = true;
+    return H.api({ action: 'adminInfo', key: k }).then(function (info) {
+      key = k; store(k);
+      $('loginView').hidden = true; $('app').hidden = false; $('logout').hidden = false;
+      $('tpl').innerHTML = info.templates.map(function (t) {
+        return '<option value="' + H.esc(t.id) + '">' + H.esc(t.short.ru) + ' · v' + H.esc(t.version) + '</option>';
+      }).join('');
+      var w = [];
+      if (!info.configured.bot) w.push('Бот подписи не настроен: заполните SIGN_BOT_TOKEN, BOT_USERNAME и APP_SHORT_NAME в свойствах скрипта.');
+      if (!info.configured.adminChats) w.push('Не указан ADMIN_CHAT_IDS — подписанные PDF не будут приходить вам в Telegram.');
+      if (!info.configured.storage) w.push('Хранилище не создано: запустите функцию setup() в Apps Script.');
+      $('warns').innerHTML = w.map(function (x) { return '<div class="msg warn">' + H.esc(x) + '</div>'; }).join('');
+      if (info.registryUrl) { $('registry').href = info.registryUrl; $('registry').hidden = false; }
+      return loadList();
+    }).catch(function (e) {
+      store('');
+      $('loginView').hidden = false; $('app').hidden = true;
+      $('loginErr').textContent = H.errorText(e.code, 'ru'); $('loginErr').hidden = false;
+    });
+  }
+
+  function loadList() {
+    return H.api({ action: 'list', key: key }).then(function (r) {
+      if (!r.items.length) { $('rows').innerHTML = '<tr><td colspan="7">Пока нет договоров.</td></tr>'; return; }
+      $('rows').innerHTML = r.items.map(function (it) {
+        var act = '';
+        if (it.link) {
+          act += '<a class="mini" href="' + H.esc(shareUrl(it.link, it.agentName)) + '" target="_blank" rel="noopener">Telegram</a>' +
+            '<button class="mini" data-copy="' + H.esc(it.link) + '">Ссылка</button>' +
+            '<button class="mini" data-cancel="' + H.esc(it.token) + '">Отменить</button>';
+        }
+        return '<tr><td><b>' + H.esc(it.number) + '</b></td>' +
+          '<td class="name">' + H.esc(it.agentName) + (it.tgUsername || it.tgExpected ? '<br><span class="hint">@' + H.esc(it.tgUsername || it.tgExpected) + '</span>' : '') + '</td>' +
+          '<td><span class="chip s-' + H.esc(it.status) + '">' + H.esc(STATUS[it.status] || it.status) + '</span></td>' +
+          '<td>' + fmt(it.createdAt) + '</td><td>' + fmt(it.signedAt) + '</td>' +
+          '<td>' + (it.pdfUrl ? '<a href="' + H.esc(it.pdfUrl) + '" target="_blank" rel="noopener">Открыть</a>' : '—') + '</td>' +
+          '<td>' + act + '</td></tr>';
+      }).join('');
+    }).catch(function (e) {
+      $('rows').innerHTML = '<tr><td colspan="7">' + H.esc(H.errorText(e.code, 'ru')) + '</td></tr>';
+    });
+  }
+
+  $('rows').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.copy) copy(b.dataset.copy, b);
+    if (b.dataset.cancel && confirm('Отменить этот договор? Ссылка перестанет работать.')) {
+      H.api({ action: 'cancel', key: key, token: b.dataset.cancel }).then(loadList, function (err) { alert(H.errorText(err.code, 'ru')); });
+    }
+  });
+
+  $('createBtn').onclick = function () {
+    var btn = this; btn.disabled = true; $('createErr').hidden = true; $('result').hidden = true;
+    var payload = { action: 'create', key: key, template: $('tpl').value,
+      agentName: $('agentName').value, personalId: $('personalId').value, phone: $('phone').value,
+      telegram: $('telegram').value, note: $('note').value };
+    H.api(payload).then(function (r) {
+      var e = r.envelope;
+      $('result').innerHTML = '<b>Готово: ' + H.esc(e.number) + ' — ' + H.esc(e.agentName) + '</b>' +
+        '<div class="hint">Отправьте ссылку агенту в Telegram. Договор откроется прямо в Telegram, агент распишется пальцем, PDF придёт ему и вам.</div>' +
+        '<code>' + H.esc(r.link) + '</code>' +
+        '<div class="actions"><a class="btn" href="' + H.esc(shareUrl(r.link, e.agentName)) + '" target="_blank" rel="noopener">Отправить в Telegram</a>' +
+        '<button class="btn ghost" id="copyNew">Скопировать ссылку</button></div>';
+      $('result').hidden = false;
+      $('copyNew').onclick = function () { copy(r.link, this); };
+      ['agentName', 'personalId', 'phone', 'telegram', 'note'].forEach(function (id) { $(id).value = ''; });
+      loadList();
+    }).catch(function (e) {
+      $('createErr').textContent = H.errorText(e.code, 'ru'); $('createErr').hidden = false;
+    }).then(function () { btn.disabled = false; });
+  };
+
+  $('loginBtn').onclick = function () { login($('key').value.trim()); };
+  $('key').onkeydown = function (e) { if (e.key === 'Enter') login(this.value.trim()); };
+  $('refresh').onclick = loadList;
+  $('logout').onclick = function () { store(''); location.reload(); };
+
+  var k = stored();
+  if (k) login(k);
+})();
+</script>
+</body>
+</html>

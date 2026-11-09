@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Irakli Kvirkvelia · Homes in Georgia">
+<meta name="robots" content="noindex">
+<title>HiG Sign — подписание договора</title>
+<!-- Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia -->
+<link rel="icon" href="assets/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;700&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --navy: #1D3560; --red: #D52B1E;
+    --bg: var(--tg-theme-secondary-bg-color, #f2f4f8);
+    --card: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #1a1f2b);
+    --muted: var(--tg-theme-hint-color, #6b7280);
+    --line: rgba(29, 53, 96, .14);
+    --btn: var(--navy);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 'Noto Sans', 'Noto Sans Georgian', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  body { padding: 0 0 calc(24px + env(safe-area-inset-bottom)); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+  header.brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0 12px; }
+  header.brand img { height: 34px; }
+  .pill { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; white-space: nowrap; }
+  .card { background: var(--card); border-radius: 16px; padding: 18px; margin: 0 0 14px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .card h3 { margin: 0 0 10px; font-size: 15px; color: var(--navy); }
+  @media (prefers-color-scheme: dark) { .card h3 { color: inherit; } }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 15px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; font-weight: 600; word-break: break-word; }
+  .tabs { display: flex; gap: 6px; background: var(--bg); border-radius: 12px; padding: 4px; margin-bottom: 14px; }
+  .tabs button { flex: 1; border: 0; background: transparent; color: var(--text); padding: 9px; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.1); color: var(--navy); }
+  .contract { font-size: 15.5px; }
+  .contract h1.c-title { font-size: 19px; line-height: 1.35; color: var(--navy); margin: 0 0 6px; }
+  .contract .c-num { color: var(--red); font-weight: 700; margin: 0 0 14px; }
+  .contract h2 { font-size: 16.5px; color: var(--navy); margin: 22px 0 8px; }
+  .contract p { margin: 0 0 10px; }
+  .contract .c-list { margin: 0 0 12px; padding-left: 22px; } .contract .c-list li { margin-bottom: 4px; }
+  .c-party { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; }
+  .c-party h4 { margin: 0 0 8px; font-size: 15px; color: var(--red); }
+  .c-party dl { margin: 0; font-size: 14.5px; }
+  .c-party dt { color: var(--muted); font-size: 13px; } .c-party dd { margin: 0 0 8px; font-weight: 600; word-break: break-word; }
+  @media (prefers-color-scheme: dark) { .contract h1.c-title, .contract h2, .tabs button[aria-selected="true"] { color: inherit; } }
+  .sigbox { position: relative; border: 2px dashed var(--line); border-radius: 12px; background: #fff; touch-action: none; height: 190px; }
+  .sigbox canvas { width: 100%; height: 100%; display: block; border-radius: 10px; }
+  .sigbox .hint { position: absolute; inset: auto 0 12px; text-align: center; color: #9aa3b2; font-size: 13px; pointer-events: none; }
+  .sigbox .base { position: absolute; left: 18px; right: 18px; bottom: 40px; border-bottom: 1px solid #d5dbe6; pointer-events: none; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
+  .link { background: none; border: 0; color: var(--red); font: inherit; font-weight: 600; cursor: pointer; padding: 6px 0; }
+  label.consent { display: flex; gap: 12px; align-items: flex-start; font-size: 14.5px; cursor: pointer; }
+  label.consent input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--navy); flex: none; }
+  .primary { width: 100%; border: 0; border-radius: 14px; padding: 15px; font: inherit; font-size: 17px; font-weight: 700; color: #fff; background: var(--btn); cursor: pointer; }
+  .primary:disabled { opacity: .45; cursor: default; }
+  .small { font-size: 13px; color: var(--muted); }
+  .state { text-align: center; padding: 48px 18px; }
+  .state .icon { font-size: 46px; line-height: 1; margin-bottom: 14px; }
+  .state h2 { margin: 0 0 8px; font-size: 20px; }
+  .state p { margin: 0 0 6px; color: var(--muted); }
+  .err { background: #fdecea; color: #8a1c13; border-radius: 12px; padding: 12px 14px; margin: 0 0 14px; font-size: 14.5px; display: none; }
+  .spinner { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--red); border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer { text-align: center; font-size: 11.5px; color: var(--muted); padding: 10px 16px 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <img src="assets/logo.svg" alt="Homes in Georgia">
+    <span class="pill" id="num">HiG Sign</span>
+  </header>
+
+  <section id="loading" class="card state">
+    <div class="spinner"></div>
+    <p>იტვირთება… / Загрузка…</p>
+  </section>
+
+  <section id="fatal" class="card state" hidden>
+    <div class="icon">⚠️</div>
+    <h2 id="fatalTitle">Не удалось открыть договор</h2>
+    <p id="fatalText"></p>
+  </section>
+
+  <section id="done" class="card state" hidden>
+    <div class="icon">✅</div>
+    <h2 data-i18n="doneTitle"></h2>
+    <p id="doneText"></p>
+    <p class="small" id="doneHash"></p>
+  </section>
+
+  <main id="main" hidden>
+    <div class="card">
+      <h3 data-i18n="checkData"></h3>
+      <dl class="kv" id="who"></dl>
+      <p class="small" data-i18n="checkHint" style="margin:10px 0 0"></p>
+    </div>
+
+    <div class="card">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-lang="ka">ქართული</button>
+        <button role="tab" data-lang="ru">Русский</button>
+      </div>
+      <article class="contract" id="contract"></article>
+    </div>
+
+    <div class="card">
+      <h3 data-i18n="sigTitle"></h3>
+      <div class="sigbox" id="sigbox">
+        <div class="base"></div>
+        <canvas id="pad"></canvas>
+        <div class="hint" data-i18n="sigHint"></div>
+      </div>
+      <div class="row">
+        <span class="small" id="signer"></span>
+        <button class="link" id="clear" type="button" data-i18n="clear"></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="consent">
+        <input type="checkbox" id="consent">
+        <span>
+          <b>ქართ.:</b> გავეცანი ხელშეკრულებას და ვეთანხმები მის პირობებს, მათ შორის პირგასამტეხლოს (10 000 აშშ დოლარი ან მიღებული შემოსავლის 100%). ვეთანხმები, რომ ელექტრონული ხელმოწერა თანაბარძალოვანია ხელით შესრულებული ხელმოწერისა.<br><br>
+          <b>Рус.:</b> Я прочитал(а) договор и принимаю его условия, включая штраф (10 000 долларов США или 100% полученного дохода). Согласен(на), что электронная подпись равнозначна собственноручной.
+        </span>
+      </label>
+    </div>
+
+    <div class="err" id="err"></div>
+    <button class="primary" id="signBtn" disabled data-i18n="signBtn"></button>
+    <p class="small" style="text-align:center;margin-top:10px" data-i18n="afterSign"></p>
+  </main>
+
+  <footer>Made with Claude (Anthropic) · © Homes in Georgia · Created by Irakli Kvirkvelia</footer>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/common.js"></script>
+<script src="assets/pdf.js"></script>
+<script>
+(function () {
+  'use strict';
+  var H = window.HigSign;
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { lang: 'ru', token: '', data: null, signed: false };
+
+  var T = {
+    checkData: { ka: 'შეამოწმეთ თქვენი მონაცემები', ru: 'Проверьте ваши данные' },
+    checkHint: { ka: 'თუ მონაცემები არასწორია, არ მოაწეროთ ხელი — მიმართეთ კომპანიას.', ru: 'Если данные неверны, не подписывайте — напишите в компанию.' },
+    sigTitle: { ka: 'ხელმოწერა', ru: 'Подпись' },
+    sigHint: { ka: 'მოაწერეთ ხელი თითით', ru: 'Распишитесь пальцем' },
+    clear: { ka: 'გასუფთავება', ru: 'Стереть' },
+    signBtn: { ka: 'ხელმოწერა / Подписать', ru: 'ხელმოწერა / Подписать' },
+    afterSign: { ka: 'ხელმოწერის შემდეგ PDF მოგივათ Telegram-ში.', ru: 'После подписания PDF придёт вам в Telegram.' },
+    doneTitle: { ka: 'ხელშეკრულება ხელმოწერილია', ru: 'Договор подписан' },
+    name: { ka: 'სახელი, გვარი', ru: 'ФИО' },
+    pid: { ka: 'პირადი ნომერი', ru: 'Личный номер' },
+    phone: { ka: 'ტელეფონი', ru: 'Телефон' },
+    building: { ka: 'PDF-ის მომზადება…', ru: 'Готовим PDF…' },
+    signing: { ka: 'ხელმოწერა…', ru: 'Подписываем…' }
+  };
+  function t(k) { return (T[k] || {})[state.lang] || ''; }
+  function applyI18n() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n); });
+    document.documentElement.lang = state.lang;
+  }
+
+  function show(id) {
+    ['loading', 'fatal', 'done', 'main'].forEach(function (s) { $(s).hidden = s !== id; });
+  }
+  function fatal(code, detail) {
+    $('fatalTitle').textContent = 'ვერ გაიხსნა / Не удалось открыть';
+    $('fatalText').textContent = H.errorText(code, 'both') + (detail ? ' (' + detail + ')' : '');
+    show('fatal');
+  }
+  function showErr(code) {
+    var el = $('err');
+    el.textContent = H.errorText(code, 'both');
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  /* ───── подпись ───── */
+  var pad = $('pad'), pctx, strokes = [], cur = null, inkLen = 0;
+  function sizePad() {
+    var r = pad.getBoundingClientRect(), dpr = Math.max(window.devicePixelRatio || 1, 2);
+    pad.width = Math.round(r.width * dpr); pad.height = Math.round(r.height * dpr);
+    pctx = pad.getContext('2d'); pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    redraw();
+  }
+  function redraw() {
+    pctx.clearRect(0, 0, pad.width, pad.height);
+    pctx.strokeStyle = '#0b2a5b'; pctx.lineWidth = 2.6; pctx.lineCap = 'round'; pctx.lineJoin = 'round';
+    strokes.forEach(function (s) {
+      pctx.beginPath();
+      s.forEach(function (p, i) { if (i) pctx.lineTo(p[0], p[1]); else pctx.moveTo(p[0], p[1]); });
+      if (s.length === 1) pctx.lineTo(s[0][0] + 0.1, s[0][1]);
+      pctx.stroke();
+    });
+  }
+  function pt(e) { var r = pad.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  pad.addEventListener('pointerdown', function (e) {
+    e.preventDefault(); pad.setPointerCapture(e.pointerId); cur = [pt(e)]; strokes.push(cur); redraw();
+    document.querySelector('.sigbox .hint').hidden = true;
+  });
+  pad.addEventListener('pointermove', function (e) {
+    if (!cur) return;
+    var p = pt(e), q = cur[cur.length - 1];
+    inkLen += Math.hypot(p[0] - q[0], p[1] - q[1]);
+    cur.push(p); redraw(); updateBtn();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+    pad.addEventListener(ev, function () { cur = null; updateBtn(); });
+  });
+  $('clear').onclick = function () {
+    strokes = []; inkLen = 0; redraw(); updateBtn();
+    document.querySelector('.sigbox .hint').hidden = false;
+  };
+  /** Подпись → PNG, обрезанная по краям, прозрачный фон. */
+  function signaturePng() {
+    var xs = [], ys = [];
+    strokes.forEach(function (s) { s.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); }); });
+    var pad8 = 8, x0 = Math.min.apply(null, xs) - pad8, y0 = Math.min.apply(null, ys) - pad8;
+    var w = Math.max.apply(null, xs) - x0 + pad8, h = Math.max.apply(null, ys) - y0 + pad8;
+    var scale = 3, c = document.createElement('canvas');
+    c.width = Math.ceil(w * scale); c.height = Math.ceil(h * scale);
+    var x = c.getContext('2d');
+    x.setTransform(scale, 0, 0, scale, -x0 * scale, -y0 * scale);
+    x.strokeStyle = '#0b2a5b'; x.lineWidth = 2.6; x.lineCap = 'round'; x.lineJoin = 'round';
+    strokes.forEach(function (s) {
+      x.beginPath();
+      s.forEach(function (p, i) { if (i) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); });
+      if (s.length === 1) x.lineTo(s[0][0] + 0.1, s[0][1]);
+      x.stroke();
+    });
+    return c.toDataURL('image/png');
+  }
+
+  function updateBtn() { $('signBtn').disabled = !(inkLen > 60 && $('consent').checked) || state.busy; }
+  $('consent').onchange = updateBtn;
+
+  /* ───── договор ───── */
+  function renderContract() {
+    $('contract').innerHTML = H.contractHtml(state.data.content, state.lang);
+    document.querySelectorAll('.tabs button').forEach(function (b) {
+      b.setAttribute('aria-selected', String(b.dataset.lang === state.lang));
+    });
+    var e = state.data.envelope;
+    $('who').innerHTML =
+      '<dt>' + t('name') + '</dt><dd>' + H.esc(e.agentName) + '</dd>' +
+      '<dt>' + t('pid') + '</dt><dd>' + H.esc(e.personalId) + '</dd>' +
+      '<dt>' + t('phone') + '</dt><dd>' + H.esc(e.phone) + '</dd>' +
+      '<dt>Telegram</dt><dd>' + (e.tgUsername ? '@' + H.esc(e.tgUsername) : 'ID ' + H.esc(e.tgId)) + '</dd>';
+    $('signer').textContent = e.agentName;
+    applyI18n();
+  }
+  document.querySelectorAll('.tabs button').forEach(function (b) {
+    b.onclick = function () { state.lang = b.dataset.lang; renderContract(); };
+  });
+
+  function showDone(env, delivered) {
+    $('doneText').textContent = '№ ' + env.number + (env.signedAtText ? ' · ' + env.signedAtText : '') +
+      (delivered === false ? ' — PDF: შეტყობინებას ვერ გამოგიგზავნეთ / не удалось отправить в чат, компания пришлёт копию.' :
+        ' — PDF გამოგზავნილია Telegram-ში / PDF отправлен вам в Telegram.');
+    $('doneHash').textContent = env.pdfHash ? 'SHA-256 PDF: ' + env.pdfHash : '';
+    applyI18n();
+    show('done');
+  }
+
+  function requestWrite() {
+    return new Promise(function (res) {
+      try {
+        var u = tg.initDataUnsafe && tg.initDataUnsafe.user;
+        if ((u && u.allows_write_to_pm) || !tg.isVersionAtLeast || !tg.isVersionAtLeast('6.9')) return res(true);
+        tg.requestWriteAccess(function (ok) { res(ok); });
+      } catch (e) { res(false); }
+    });
+  }
+  function clientIp() {
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 3000);
+    return fetch('https://api.ipify.org?format=json', ctrl ? { signal: ctrl.signal } : {})
+      .then(function (r) { return r.json(); }).then(function (j) { return j.ip || ''; })
+      .catch(function () { return ''; }).then(function (ip) { clearTimeout(timer); return ip; });
+  }
+
+  $('signBtn').onclick = function () {
+    if (state.busy) return;
+    state.busy = true; updateBtn();
+    $('err').style.display = 'none';
+    var btn = $('signBtn'), env = state.data.envelope, sig = signaturePng(), signedAtText;
+    btn.textContent = t('signing');
+    requestWrite().then(function () { return clientIp(); }).then(function (ip) {
+      return H.api({
+        action: 'sign', token: state.token, initData: tg.initData, consent: true,
+        docHash: env.docHash, signature: sig,
+        client: { ip: ip, userAgent: navigator.userAgent, timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone }
+      }).then(function (r) {
+        signedAtText = r.signedAtText;
+        btn.textContent = t('building');
+        return window.HigSignPdf.buildSignedPdf({
+          content: state.data.content, docHash: env.docHash, signerName: env.agentName,
+          signedAtText: signedAtText, signatureDataUrl: sig, logoUrl: 'assets/logo.svg',
+          audit: { personalId: env.personalId, phone: env.phone, tgId: env.tgId, tgUsername: env.tgUsername,
+            ip: ip, userAgent: navigator.userAgent, timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone }
+        });
+      });
+    }).then(function (pdfBytes) {
+      return H.api({ action: 'finalize', token: state.token, initData: tg.initData, pdf: H.bytesToBase64(pdfBytes) });
+    }).then(function (r) {
+      try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+      env.signedAtText = signedAtText; env.pdfHash = r.pdfHash;
+      showDone(env, r.deliveredAgent);
+    }).catch(function (e) {
+      state.busy = false;
+      btn.textContent = t('signBtn');
+      updateBtn();
+      showErr(e.code || 'network');
+    });
+  };
+
+  /* ───── старт ───── */
+  function start() {
+    if (!tg || !tg.initData) return fatal('no_init_data');
+    tg.ready(); tg.expand();
+    var u = tg.initDataUnsafe || {};
+    state.lang = (u.user && u.user.language_code === 'ka') ? 'ka' : 'ru';
+    state.token = u.start_param || new URLSearchParams(location.search).get('t') || '';
+    if (!state.token) return fatal('not_found');
+    H.api({ action: 'open', token: state.token, initData: tg.initData }).then(function (data) {
+      state.data = data;
+      $('num').textContent = '№ ' + data.envelope.number;
+      if (data.envelope.status === 'completed') return showDone(data.envelope);
+      renderContract();
+      show('main');
+      sizePad();
+      window.addEventListener('resize', sizePad);
+    }).catch(function (e) { fatal(e.code || 'network', e.detail); });
+  }
+  applyI18n();
+  start();
+})();
+</script>
+</body>
+</html>
