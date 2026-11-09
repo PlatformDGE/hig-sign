@@ -74,7 +74,10 @@
 <body>
 <div class="wrap">
   <header class="brand">
-    <img src="assets/logo.svg" alt="Homes in Georgia">
+    <picture>
+      <source srcset="assets/logo-white.svg" media="(prefers-color-scheme: dark)">
+      <img id="brandLogo" src="assets/logo.svg" alt="Homes in Georgia">
+    </picture>
     <span class="pill" id="num">HiG Sign</span>
   </header>
 
@@ -300,6 +303,7 @@
     var btn = $('signBtn'), env = state.data.envelope, sig, signedAtText, step = 'signature';
     try { sig = signaturePng(); } catch (e) { state.busy = false; updateBtn(); return showErr('bad_signature'); }
     btn.textContent = t('signing');
+    try { tg.enableClosingConfirmation(); } catch (e) {}
     requestWrite().then(function () { return clientIp(); }).then(function (ip) {
       return H.api({
         action: 'sign', token: state.token, initData: tg.initData, consent: true,
@@ -309,11 +313,18 @@
         signedAtText = r.signedAtText;
         step = 'pdf';
         btn.textContent = t('building');
-        return window.HigSignPdf.buildSignedPdf({
-          content: state.data.content, docHash: env.docHash, signerName: env.agentName,
-          signedAtText: signedAtText, signatureDataUrl: sig, logoUrl: 'assets/logo-pdf.png',
-          audit: { personalId: env.personalId, phone: env.phone, tgId: env.tgId, tgUsername: env.tgUsername,
-            ip: ip, userAgent: navigator.userAgent, timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone }
+        var job = function (logo) {
+          return window.HigSignPdf.buildSignedPdf({
+            content: state.data.content, docHash: env.docHash, signerName: env.agentName,
+            signedAtText: signedAtText, signatureDataUrl: sig, logoUrl: logo,
+            audit: { personalId: env.personalId, phone: env.phone, tgId: env.tgId, tgUsername: env.tgUsername,
+              ip: ip, userAgent: navigator.userAgent, timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone }
+          });
+        };
+        // На слабых телефонах вторая попытка — без логотипа
+        return job('assets/logo-pdf.png').catch(function (e1) {
+          console.warn('PDF retry', e1);
+          return job(null);
         });
       });
     }).then(function (pdfBytes) {
@@ -322,8 +333,10 @@
     }).then(function (r) {
       try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
       env.signedAtText = signedAtText; env.pdfHash = r.pdfHash;
+      try { tg.disableClosingConfirmation(); } catch (e) {}
       showDone(env, r.deliveredAgent);
     }).catch(function (e) {
+      try { tg.disableClosingConfirmation(); } catch (x) {}
       state.busy = false;
       btn.textContent = t('signBtn');
       updateBtn();
@@ -336,6 +349,11 @@
   function start() {
     if (!tg || !tg.initData) return fatal('no_init_data');
     tg.ready(); tg.expand();
+    try { if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
+    if (tg.colorScheme) {   // тема Telegram может отличаться от темы телефона
+      var src = document.querySelector('picture source'); if (src) src.remove();
+      $('brandLogo').src = tg.colorScheme === 'dark' ? 'assets/logo-white.svg' : 'assets/logo.svg';
+    }
     var u = tg.initDataUnsafe || {};
     state.lang = (u.user && u.user.language_code === 'ka') ? 'ka' : 'ru';
     state.token = u.start_param || new URLSearchParams(location.search).get('t') || '';

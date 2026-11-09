@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => {
 
 function telegramMock(initData, user, startParam) {
   return 'window.Telegram={WebApp:{initData:' + JSON.stringify(initData) + ',initDataUnsafe:' +
-    JSON.stringify({ user, start_param: startParam }) + ',ready(){},expand(){},isVersionAtLeast(){return true},' +
+    JSON.stringify({ user, start_param: startParam }) + ',ready(){},expand(){},disableVerticalSwipes(){},enableClosingConfirmation(){},disableClosingConfirmation(){},colorScheme:"dark",isVersionAtLeast(){return true},' +
     'requestWriteAccess(cb){window.__wa=1;cb(true)},HapticFeedback:{notificationOccurred(){}}}};';
 }
 
