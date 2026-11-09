@@ -160,7 +160,7 @@
 
   /* ───── рисование ───── */
   function fitImage(ctx, img, x, y, w, h) {
-    if (!img) return;
+    if (!img || !img.width || !img.height) return;
     var r = Math.min(w / img.width, h / img.height);
     var dw = img.width * r, dh = img.height * r;
     ctx.drawImage(img, x, y + (h - dh) / 2, dw, dh);
@@ -348,7 +348,7 @@
 
       var jpegs = pages.map(function (items, i) {
         drawPage(ctx, items, i + 1, pages.length, d);
-        return dataUrlBytes(canvas.toDataURL('image/jpeg', 0.8));
+        return dataUrlBytes(canvas.toDataURL('image/jpeg', 0.75));
       });
       var now = new Date(), pad = function (n) { return ('0' + n).slice(-2); };
       return makePdf(jpegs, {

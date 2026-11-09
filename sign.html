@@ -182,9 +182,9 @@
     $('fatalText').textContent = H.errorText(code, 'both') + (detail ? ' (' + detail + ')' : '');
     show('fatal');
   }
-  function showErr(code) {
+  function showErr(code, detail) {
     var el = $('err');
-    el.textContent = H.errorText(code, 'both');
+    el.textContent = H.errorText(code, 'both') + (detail ? ' [' + detail + ']' : '');
     el.style.display = 'block';
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
@@ -297,7 +297,8 @@
     if (state.busy) return;
     state.busy = true; updateBtn();
     $('err').style.display = 'none';
-    var btn = $('signBtn'), env = state.data.envelope, sig = signaturePng(), signedAtText;
+    var btn = $('signBtn'), env = state.data.envelope, sig, signedAtText, step = 'signature';
+    try { sig = signaturePng(); } catch (e) { state.busy = false; updateBtn(); return showErr('bad_signature'); }
     btn.textContent = t('signing');
     requestWrite().then(function () { return clientIp(); }).then(function (ip) {
       return H.api({
@@ -306,15 +307,17 @@
         client: { ip: ip, userAgent: navigator.userAgent, timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone }
       }).then(function (r) {
         signedAtText = r.signedAtText;
+        step = 'pdf';
         btn.textContent = t('building');
         return window.HigSignPdf.buildSignedPdf({
           content: state.data.content, docHash: env.docHash, signerName: env.agentName,
-          signedAtText: signedAtText, signatureDataUrl: sig, logoUrl: 'assets/logo.svg',
+          signedAtText: signedAtText, signatureDataUrl: sig, logoUrl: 'assets/logo-pdf.png',
           audit: { personalId: env.personalId, phone: env.phone, tgId: env.tgId, tgUsername: env.tgUsername,
             ip: ip, userAgent: navigator.userAgent, timezone: (Intl.DateTimeFormat().resolvedOptions() || {}).timeZone }
         });
       });
     }).then(function (pdfBytes) {
+      step = 'upload';
       return H.api({ action: 'finalize', token: state.token, initData: tg.initData, pdf: H.bytesToBase64(pdfBytes) });
     }).then(function (r) {
       try { tg.HapticFeedback.notificationOccurred('success'); } catch (e) {}
@@ -324,7 +327,8 @@
       state.busy = false;
       btn.textContent = t('signBtn');
       updateBtn();
-      showErr(e.code || 'network');
+      if (e && e.code) showErr(e.code);
+      else showErr('client', step + ': ' + (e && (e.message || e.name) || String(e)));
     });
   };
 
